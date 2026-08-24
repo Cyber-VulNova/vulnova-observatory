@@ -1,0 +1,9 @@
+# Normalize line endings. Shell scripts MUST stay LF so they run on
+# macOS/Linux (a CRLF shebang causes "bad interpreter" errors).
+* text=auto
+*.sh text eol=lf
+Dockerfile text eol=lf
+Procfile text eol=lf
+
+# Windows scripts use CRLF.
+*.ps1 text eol=crlf
