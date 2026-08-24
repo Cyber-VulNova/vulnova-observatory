@@ -2,13 +2,20 @@
   <img src="vulnova/Logo/vulnova-logo-primary.svg" alt="VulNova" width="320">
 </p>
 
-# VulNova
+# VulNova Observatory
 
-**Open-source vulnerability intelligence — a CLI and a web dashboard for CVE tracking, risk triage, exploit discovery, and cyber news.**
+**The threat-intelligence portal that extends the VulNova CETM platform — a CLI and web dashboard for CVE tracking, risk triage, exploit discovery, and cyber news.**
 
-VulNova aggregates data from multiple security sources into one place. Use the
-command line for fast lookups and automation, or the web dashboard to browse a
-live CVE database and a tagged cyber-news feed.
+VulNova Observatory is the intelligence module of VulNova. You observe the
+threat landscape through four instruments:
+
+- **Atlas** — the complete CVE catalog (NVD)
+- **Pulse** — the live cyber-news feed (14 sources)
+- **Signal** — data-source connection health
+- **Flare** — vendor/GHSA advisories *(planned)*
+
+Use the command line for fast lookups and automation, or the web dashboard to
+browse the live CVE catalog and tagged news feed.
 
 ```
 $ vulnova lookup CVE-2024-3094
