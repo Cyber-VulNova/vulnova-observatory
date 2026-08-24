@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Optimized for small sizes (16px-64px) -->
+  <!-- Thicker strokes for better visibility at tiny sizes -->
+
+  <!-- Hexagon -->
+  <polygon points="32,6 54.86,19 54.86,45 32,58 9.14,45 9.14,19"
+           fill="#7C3AED"/>
+
+  <!-- V Letter (thicker for small sizes) -->
+  <path d="M 22 26 L 32 42 L 42 26"
+        fill="none"
+        stroke="white"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+</svg>

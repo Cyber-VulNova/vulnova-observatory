@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 100" width="320" height="100">
+  <!-- White version for dark backgrounds -->
+
+  <!-- Hexagon Logo -->
+  <polygon points="50,10 84.64,30 84.64,70 50,90 15.36,70 15.36,30"
+           fill="none"
+           stroke="white"
+           stroke-width="2.5"/>
+
+  <!-- V Letter -->
+  <path d="M 35 40 L 50 65 L 65 40"
+        fill="none"
+        stroke="white"
+        stroke-width="6"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- VulNova Text -->
+  <text x="110" y="60"
+        font-family="Arial, sans-serif"
+        font-size="36"
+        font-weight="bold"
+        fill="white">
+    VulNova
+  </text>
+</svg>

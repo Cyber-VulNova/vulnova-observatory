@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VulNova Pulse - Cyber Threat Feed</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <a href="/" class="brand-logo"><img src="{{ url_for('static', filename='vulnova-logo.svg') }}" alt="VulNova" class="brand-img"></a>
+            <nav class="topnav">
+                <a href="/" class="topnav-link">Atlas · CVEs</a>
+                <a href="/news" class="topnav-link active">Pulse · News</a>
+                <a href="/sources" class="topnav-link">Signal · Sources</a>
+            </nav>
+        </div>
+        <div class="topbar-stats">
+            <span class="stat-pill" id="stat-articles">— articles</span>
+            <button id="refresh-btn" class="btn btn-ghost btn-sm" title="Force refresh feeds">⟳ Refresh</button>
+        </div>
+    </header>
+
+    <div class="pulse-layout">
+        <!-- Source filter sidebar -->
+        <aside class="pulse-sidebar">
+            <div class="pulse-hero">
+                <div class="pulse-title">Pulse</div>
+                <div class="pulse-sub">Live Cyber Threat Feed</div>
+            </div>
+
+            <div class="filter-block">
+                <div class="filter-head">
+                    <span>Sources</span>
+                    <button id="toggle-all" class="link-btn">Toggle all</button>
+                </div>
+                <div class="source-list" id="source-list">
+                    {% for s in sources %}
+                    <label class="source-item" data-handle="{{ s.handle }}">
+                        <input type="checkbox" class="source-cb" value="{{ s.handle }}" checked>
+                        <span class="source-dot" style="background: {{ s.accent }}"></span>
+                        <span class="source-name">{{ s.name }}</span>
+                        <span class="source-cat cat-{{ s.category|lower }}">{{ s.category }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="filter-block">
+                <div class="filter-head"><span>Search</span></div>
+                <input type="text" id="news-search" placeholder="Filter headlines…" autocomplete="off">
+            </div>
+        </aside>
+
+        <!-- Article feed -->
+        <main class="pulse-main">
+            <div class="pulse-toolbar">
+                <div class="chip-row" id="category-chips">
+                    <button class="chip chip-active" data-cat="all">All</button>
+                    <button class="chip" data-cat="News">News</button>
+                    <button class="chip" data-cat="Research">Research</button>
+                    <button class="chip" data-cat="Advisories">Advisories</button>
+                </div>
+                <div class="pulse-meta" id="pulse-meta">Loading feeds…</div>
+            </div>
+
+            <div id="news-feed" class="news-feed">
+                <div class="table-loading">
+                    <div class="spinner"></div>
+                    <div>Gathering intelligence from 14 sources…</div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='news.js') }}"></script>
+</body>
+</html>

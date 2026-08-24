@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VulNova Atlas — CVE Database</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <a href="/" class="brand-logo"><img src="{{ url_for('static', filename='vulnova-logo.svg') }}" alt="VulNova" class="brand-img"></a>
+            <nav class="topnav">
+                <a href="/" class="topnav-link active">Atlas · CVEs</a>
+                <a href="/news" class="topnav-link">Pulse · News</a>
+                <a href="/sources" class="topnav-link">Signal · Sources</a>
+            </nav>
+        </div>
+        <div class="topbar-stats" id="topbar-stats">
+            <span class="stat-pill" id="stat-total">— CVEs</span>
+        </div>
+    </header>
+
+    <div class="atlas-intro">
+        <span class="atlas-title">Atlas</span>
+        <span class="atlas-tag">The complete CVE catalog — search, triage, and explore every vulnerability</span>
+    </div>
+
+    <div class="filter-pills" id="filter-pills">
+        <span class="pills-label">Quick filters:</span>
+        <button class="pill pill-active" data-preset="all">All Recent</button>
+        <button class="pill" data-preset="kev">🔥 CISA KEV</button>
+        <button class="pill" data-preset="ransomware">🦠 Ransomware-linked</button>
+        <button class="pill" data-preset="week">🆕 First seen this week</button>
+        <button class="pill" data-preset="critical">⚡ Critical (CVSS ≥ 9)</button>
+        <button class="pill" data-preset="highepss">📈 High EPSS (≥ 50%)</button>
+    </div>
+
+    <div class="toolbar">
+        <div class="toolbar-group search-group">
+            <input type="text" id="search-input" placeholder="Search CVEs by keyword (e.g. apache, log4j, openssl)…" autocomplete="off">
+            <button id="search-btn" class="btn btn-primary">Search</button>
+            <button id="clear-btn" class="btn btn-ghost" title="Clear filters">Clear</button>
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Window</label>
+            <select id="days-filter">
+                <option value="7">Last 7 days</option>
+                <option value="30" selected>Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="120">Last 120 days</option>
+                <option value="0">All time</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Severity</label>
+            <select id="severity-filter">
+                <option value="">All</option>
+                <option value="CRITICAL">Critical</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">KEV only</label>
+            <input type="checkbox" id="kev-filter" class="checkbox">
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Sort by</label>
+            <select id="sort-by">
+                <option value="published">Published date</option>
+                <option value="last_modified">Last updated</option>
+                <option value="triage_score">Triage score</option>
+                <option value="cvss_score">CVSS score</option>
+                <option value="epss_percent">EPSS score</option>
+                <option value="severity">Severity</option>
+                <option value="exploit_status">Exploit status</option>
+                <option value="in_kev">KEV status</option>
+                <option value="product_label">Product</option>
+                <option value="cve_id">CVE ID</option>
+            </select>
+            <button id="sort-dir" class="btn btn-ghost btn-sm" title="Toggle sort direction">↓ Desc</button>
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Rows / page</label>
+            <select id="page-size">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50" selected>50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
+                <option value="2000">2000 (max)</option>
+            </select>
+        </div>
+    </div>
+
+    <main class="table-wrap">
+        <table class="cve-table" id="cve-table">
+            <thead>
+                <tr>
+                    <th class="col-expand"></th>
+                    <th data-sort="cve_id" class="sortable">CVE ID</th>
+                    <th data-sort="triage_score" class="sortable" title="VulNova priority: KEV+EPSS+CVSS+exploit">Triage ▾</th>
+                    <th data-sort="exploit_status" class="sortable" title="Public exploit status">Exploit</th>
+                    <th data-sort="cvss_score" class="sortable">CVSS</th>
+                    <th data-sort="severity" class="sortable">Severity</th>
+                    <th data-sort="epss_percent" class="sortable" title="Exploit Prediction Scoring System">EPSS</th>
+                    <th data-sort="in_kev" class="sortable">KEV</th>
+                    <th class="col-product sortable" data-sort="product_label" title="Affected vendor / product">Product</th>
+                    <th class="col-desc">Description</th>
+                    <th data-sort="published" class="sortable">Published</th>
+                    <th data-sort="last_modified" class="sortable" title="Last modified date">Updated</th>
+                    <th class="col-cwe sortable" data-sort="cwe">CWE</th>
+                    <th class="col-link">NVD</th>
+                </tr>
+            </thead>
+            <tbody id="cve-tbody">
+                <tr><td colspan="14" class="table-loading">
+                    <div class="spinner"></div>
+                    <div>Loading CVEs from NVD…</div>
+                </td></tr>
+            </tbody>
+        </table>
+    </main>
+
+    <footer class="pager">
+        <div class="pager-info" id="pager-info">—</div>
+        <div class="pager-controls">
+            <button id="first-btn" class="btn btn-ghost btn-sm">« First</button>
+            <button id="prev-btn" class="btn btn-ghost btn-sm">‹ Prev</button>
+            <span class="pager-page" id="pager-page">Page 1</span>
+            <button id="next-btn" class="btn btn-ghost btn-sm">Next ›</button>
+            <button id="last-btn" class="btn btn-ghost btn-sm">Last »</button>
+            <span class="pager-jump">
+                Go to
+                <input type="number" id="page-jump" min="1" placeholder="#">
+                <button id="jump-btn" class="btn btn-ghost btn-sm">Go</button>
+            </span>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

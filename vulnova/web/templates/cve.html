@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ cve_id }} · VulNova</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <a href="/" class="brand-logo"><img src="{{ url_for('static', filename='vulnova-logo.svg') }}" alt="VulNova" class="brand-img"></a>
+            <nav class="topnav">
+                <a href="/" class="topnav-link">Atlas · CVEs</a>
+                <a href="/news" class="topnav-link">Pulse · News</a>
+                <a href="/sources" class="topnav-link">Signal · Sources</a>
+            </nav>
+        </div>
+        <div class="topbar-stats">
+            <a href="/" class="btn btn-ghost btn-sm">← Back to database</a>
+        </div>
+    </header>
+
+    <main class="cve-page" id="cve-root" data-cve="{{ cve_id }}">
+        <div class="table-loading">
+            <div class="spinner"></div>
+            <div>Loading {{ cve_id }} — gathering exploit intel and timeline…</div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='cve.js') }}"></script>
+</body>
+</html>
