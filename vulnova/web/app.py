@@ -14,7 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import httpx
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 
 from vulnova.core.cache import Cache
 from vulnova.core.config import Config
@@ -37,6 +37,37 @@ from vulnova.core.tagger import extract_tags, extract_product_text
 
 
 logger = logging.getLogger(__name__)
+
+
+def _install_basic_auth(app: Flask) -> None:
+    """Optionally protect the whole app with HTTP Basic Auth.
+
+    Enabled only when BOTH ``VULNOVA_BASIC_AUTH_USER`` and
+    ``VULNOVA_BASIC_AUTH_PASS`` environment variables are set — otherwise the
+    app stays open (fine for local/dev use). Recommended for any public
+    deployment, ideally in addition to a reverse proxy.
+    """
+    import base64
+    import hmac
+
+    user = os.environ.get("VULNOVA_BASIC_AUTH_USER")
+    password = os.environ.get("VULNOVA_BASIC_AUTH_PASS")
+    if not (user and password):
+        return  # auth disabled
+
+    expected = "Basic " + base64.b64encode(f"{user}:{password}".encode()).decode()
+
+    @app.before_request
+    def _require_basic_auth():
+        provided = request.headers.get("Authorization", "")
+        # Constant-time comparison to avoid timing side-channels.
+        if not hmac.compare_digest(provided, expected):
+            return Response(
+                "Authentication required.", 401,
+                {"WWW-Authenticate": 'Basic realm="VulNova Observatory"'},
+            )
+
+    logger.info("HTTP Basic Auth enabled for all routes.")
 
 
 # ─── Product / vendor prettification ──────────────────────────────────────────
@@ -361,6 +392,10 @@ def create_app() -> Flask:
         static_folder=str(static_dir),
     )
     app.config["JSON_SORT_KEYS"] = False
+
+    # Optional HTTP Basic Auth (enabled via env vars) — recommended for public
+    # deployments. No-op when the env vars are unset.
+    _install_basic_auth(app)
 
     # ─── Pages ────────────────────────────────────────────────────────
 

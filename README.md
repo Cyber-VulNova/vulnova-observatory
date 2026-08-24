@@ -308,6 +308,54 @@ Configuration and cached data live in `~/.vulnova/`:
 
 ---
 
+## Deployment
+
+VulNova Observatory ships with a production `Dockerfile` and a `Procfile`. It
+runs under gunicorn via the app factory `vulnova.web.app:create_app()`.
+
+### Docker (any host)
+
+```bash
+docker build -t vulnova-observatory .
+docker run -p 8000:8000 -v vulnova-data:/data -e VULNOVA_REFRESH_HOURS=6 vulnova-observatory
+# open http://localhost:8000
+```
+
+### Render (Blueprint)
+
+Push the repo, then in Render choose **New + → Blueprint** and select it — Render
+reads `render.yaml`. Free instances sleep when idle, and the cache is ephemeral
+unless you attach a disk at `/data`.
+
+### Railway / Fly.io / Heroku-style
+
+Use the `Dockerfile` directly, or the `Procfile`:
+
+```
+web: gunicorn "vulnova.web.app:create_app()" --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 120
+```
+
+### Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | Port to bind (set automatically by most platforms). |
+| `VULNOVA_REFRESH_HOURS` | Auto-refresh interval in hours (e.g. `6`). Unset/`0` disables. |
+| `VULNOVA_BASIC_AUTH_USER` / `VULNOVA_BASIC_AUTH_PASS` | When **both** are set, the entire site requires HTTP Basic Auth. |
+| `HOME` | Root of the app data dir (`$HOME/.vulnova`); the image sets it to `/data`. |
+
+### Before exposing it publicly
+
+- **Authentication:** there is no auth by default. Set the Basic Auth env vars
+  above and/or front the app with a reverse proxy. Always serve over HTTPS.
+- **Refresh endpoints:** `?refresh=1` triggers outbound fetches — keep it behind
+  auth and/or rate-limit it on public instances (the manual refresh buttons are
+  hidden by default).
+- **Persistence:** mount a volume at `/data` to keep the SQLite cache warm
+  across restarts; otherwise it refetches on cold start.
+
+---
+
 ## Architecture
 
 ```

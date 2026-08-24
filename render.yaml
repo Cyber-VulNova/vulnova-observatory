@@ -1,0 +1,25 @@
+# Render Blueprint — deploy VulNova Observatory as a Docker web service.
+# In Render: New + -> Blueprint -> pick this repo. It reads this file.
+services:
+  - type: web
+    name: vulnova-observatory
+    runtime: docker
+    plan: free            # free instances sleep when idle; bump for always-on
+    healthCheckPath: /
+    envVars:
+      - key: VULNOVA_REFRESH_HOURS
+        value: "6"
+      # Set these in the Render dashboard to lock the site behind Basic Auth.
+      # (sync:false => Render prompts you; values are NOT stored in the repo.)
+      - key: VULNOVA_BASIC_AUTH_USER
+        sync: false
+      - key: VULNOVA_BASIC_AUTH_PASS
+        sync: false
+
+    # The free plan has no persistent disk, so the SQLite cache is ephemeral
+    # (it simply refetches on cold start). For a warm, persistent cache on a
+    # paid plan, uncomment the disk below (HOME is /data in the image):
+    # disk:
+    #   name: vulnova-data
+    #   mountPath: /data
+    #   sizeGB: 1

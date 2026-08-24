@@ -37,6 +37,7 @@ dependencies = [
     "anyio>=4.3.0",
     "flask>=3.0.0",
     "feedparser>=6.0.11",
+    "gunicorn>=22.0.0",
 ]
 
 [project.optional-dependencies]
