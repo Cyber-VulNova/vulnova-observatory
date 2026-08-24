@@ -60,7 +60,7 @@ $ vulnova lookup CVE-2024-3094
 ### From source
 
 ```bash
-git clone https://github.com/nikheelkumar16/vulnova-observatory.git
+git clone https://github.com/Cyber-VulNova/vulnova-observatory.git
 cd vulnova-observatory
 pip install -e .
 ```
@@ -404,7 +404,7 @@ Contributions are welcome:
 ### Development Setup
 
 ```bash
-git clone https://github.com/nikheelkumar16/vulnova-observatory.git
+git clone https://github.com/Cyber-VulNova/vulnova-observatory.git
 cd vulnova-observatory
 pip install -e ".[dev]"
 ```

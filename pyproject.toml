@@ -52,9 +52,9 @@ vulnova = "vulnova.cli:main"
 vn = "vulnova.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/nikheelkumar16/vulnova-observatory"
-Repository = "https://github.com/nikheelkumar16/vulnova-observatory"
-Issues = "https://github.com/nikheelkumar16/vulnova-observatory/issues"
+Homepage = "https://github.com/Cyber-VulNova/vulnova-observatory"
+Repository = "https://github.com/Cyber-VulNova/vulnova-observatory"
+Issues = "https://github.com/Cyber-VulNova/vulnova-observatory/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["vulnova"]
