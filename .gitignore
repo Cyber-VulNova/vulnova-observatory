@@ -26,6 +26,16 @@ Thumbs.db
 # VulNova data
 *.db
 exploitdb_cache/
+.vulnova/
+
+# Secrets / credentials (never commit these)
+.env
+.env.*
+*.pem
+*.key
+keys.json
+credentials.json
+secrets.json
 
 # Testing
 .pytest_cache/
