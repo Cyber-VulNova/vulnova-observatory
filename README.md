@@ -78,7 +78,28 @@ not install it, run everything through the module form instead:
 
 ## Quick Start
 
+**Run in one command** (clone, then let the launcher create a venv, install, and start the dashboard):
+
 ```bash
+git clone https://github.com/Cyber-VulNova/vulnova-observatory.git
+cd vulnova-observatory
+
+# Windows (PowerShell)
+./run.ps1
+
+# macOS / Linux
+./run.sh
+```
+
+That's it — no API keys, no database setup. On first run it creates its own
+local cache (`~/.vulnova/`) and pulls live data from the public sources. Pass
+flags straight through, e.g. `./run.ps1 --port 8080 --refresh-hours 6`.
+
+Prefer to do it manually?
+
+```bash
+pip install .
+
 # Launch the web dashboard (opens your browser at http://127.0.0.1:5000)
 vulnova web
 # …or, without installing the package:
