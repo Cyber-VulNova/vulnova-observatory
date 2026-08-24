@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') applySearch();
     });
     document.getElementById('clear-btn').addEventListener('click', clearFilters);
+    document.getElementById('refresh-btn').addEventListener('click', () => loadPage(true));
     document.getElementById('severity-filter').addEventListener('change', applySearch);
     document.getElementById('days-filter').addEventListener('change', applySearch);
     document.getElementById('kev-filter').addEventListener('change', () => {
@@ -195,10 +196,10 @@ function goToPage(page) {
 
 // ─── Data loading ──────────────────────────────────────────────────────────
 
-async function loadPage() {
+async function loadPage(force = false) {
     const tbody = document.getElementById('cve-tbody');
     tbody.innerHTML = `<tr><td colspan="${COLSPAN}" class="table-loading">
-        <div class="spinner"></div><div>Loading CVEs…</div></td></tr>`;
+        <div class="spinner"></div><div>${force ? 'Refreshing CVEs from NVD…' : 'Loading CVEs…'}</div></td></tr>`;
 
     const params = new URLSearchParams({ page: state.page, size: state.size, feed: state.feed });
     if (state.keyword) params.set('keyword', state.keyword);
@@ -206,6 +207,7 @@ async function loadPage() {
         if (state.severity) params.set('severity', state.severity);
         if (state.days) params.set('days', state.days);
     }
+    if (force) params.set('refresh', '1');
 
     try {
         const resp = await fetch('/api/cves?' + params.toString());

@@ -420,14 +420,18 @@ class NVDClient:
             params["pubEndDate"] = end.strftime("%Y-%m-%dT%H:%M:%S.000")
         return params
 
-    def count_cves(self, keyword: str = "", cvss_severity: str = "", days_back: int = 0) -> int:
+    def count_cves(self, keyword: str = "", cvss_severity: str = "", days_back: int = 0,
+                   force: bool = False) -> int:
         """Return the total number of CVEs matching the given filters.
 
         Uses a minimal (resultsPerPage=1) request and reads totalResults.
         Cached so repeated pagination requests don't re-query.
+
+        Args:
+            force: bypass the cache and re-query NVD.
         """
         cache_key = f"count:{keyword.lower()}:{cvss_severity.upper()}:{days_back}"
-        if self.cache:
+        if self.cache and not force:
             cached = self.cache.get(self.NAMESPACE, cache_key)
             if cached is not None:
                 return cached.get("total", 0)
@@ -453,6 +457,7 @@ class NVDClient:
         keyword: str = "",
         cvss_severity: str = "",
         days_back: int = 0,
+        force: bool = False,
     ) -> tuple[list[CVEResult], int]:
         """List CVEs page-by-page, newest published first.
 
@@ -480,14 +485,14 @@ class NVDClient:
             f"{keyword.lower()}:{cvss_severity.upper()}:{days_back}"
         )
 
-        if self.cache:
+        if self.cache and not force:
             cached = self.cache.get(self.NAMESPACE, cache_key)
             if cached:
                 results = [CVEResult.from_dict(c) for c in cached.get("results", [])]
                 return results, cached.get("total", len(results))
 
         # Determine total so we can index from the end (newest CVEs).
-        total = self.count_cves(keyword, cvss_severity, days_back)
+        total = self.count_cves(keyword, cvss_severity, days_back, force=force)
         if total <= 0:
             return [], 0
 

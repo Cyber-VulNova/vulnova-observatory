@@ -11,8 +11,8 @@ threat landscape through four instruments:
 
 - **Atlas** — the complete CVE catalog (NVD)
 - **Pulse** — the live cyber-news feed (14 sources)
+- **Flare** — vendor/GHSA advisories, including those with no CVE assigned
 - **Signal** — data-source connection health
-- **Flare** — vendor/GHSA advisories *(planned)*
 
 Use the command line for fast lookups and automation, or the web dashboard to
 browse the live CVE catalog and tagged news feed.
@@ -38,53 +38,41 @@ $ vulnova lookup CVE-2024-3094
 
 | Feature | Description |
 |---------|-------------|
-| **Web Dashboard** | Browser UI with the Atlas CVE catalog and the Pulse news feed (`vulnova web`) |
-| **VulNova Atlas** | Newest-first CVE catalog from NVD with time-window, severity, KEV, keyword filters, sorting, and expandable detail |
-| **VulNova Pulse** | Live cyber-news feed aggregating 14 security sources (RSS/Atom) |
+| **Web Dashboard** | Browser UI with four instruments — Atlas, Pulse, Flare, and Signal (`vulnova web`) |
+| **Atlas** | Newest-first CVE catalog from NVD with time-window, severity, KEV, keyword filters, sorting, expandable detail, and a force-refresh button |
+| **Pulse** | Live cyber-news feed aggregating 14 security sources (RSS/Atom) |
+| **Flare** | Vendor + open-source advisories (GHSA, OSV, Ubuntu, Red Hat, MSRC, Palo Alto, VMware), including those with **no CVE assigned** |
+| **Signal** | Live connection-health board for every data source |
 | **Entity Tagging** | News articles auto-tagged with CVEs, agencies (CISA…), products, countries, and threat keywords — click to filter |
 | **CVE Lookup (CLI)** | Search by CVE ID, component name+version, or CPE string |
 | **Risk Triage** | Deterministic 0-100 priority score: KEV + EPSS + CVSS + exploit maturity |
-| **Local-AI Briefing** | `--summarize` writes a plain-language triage briefing via a local LLM (offline) |
-| **Reports** | `--report file.md` / `file.html` — HTML prints straight to PDF |
-| **Doctor** | One command to check keys, connectivity, cache, and LLM readiness |
-| **Asset Scanning** | Fingerprint a live URL → auto CVE scan per detected technology |
-| **Batch Scanning** | Scan multiple URLs from a file with concurrency control |
-| **Exploit-DB** | Local-indexed CSV, matched by CVE ID + fuzzy title |
-| **GitHub PoCs** | GitHub API search (stars ranked, CVE-in-name first, aggregator lists filtered) |
-| **Vulhub** | Docker-based PoC environments auto-discovered |
+| **Exploit Intel** | Exploit-DB (local CSV), GitHub PoCs, Nuclei templates, Metasploit modules, and Vulhub environments |
 | **CISA KEV** | Known Exploited Vulnerabilities catalog — #1 triage signal |
-| **Nuclei Templates** | Ready-to-fire templates from ProjectDiscovery |
-| **Metasploit** | Module lookup with direct `use` command |
 | **EPSS Score** | Exploit prediction probability (FIRST.org) |
 | **Smart CPE Matching** | Rapidfuzz similarity scoring + vendor normalization |
 | **SQLite Cache** | TTL-based caching — fast repeats, offline-friendly |
 | **Output Modes** | Table · JSON · CSV · Silent (CLI) |
-| **API Key Storage** | NVD + GitHub tokens stored in `~/.vulnova/` |
 
 ---
 
 ## Installation
 
-### From source (recommended for development)
+### From source
 
 ```bash
-git clone https://github.com/vulnova/vulnova.git
-cd vulnova
+git clone https://github.com/nikheelkumar16/vulnova-observatory.git
+cd vulnova-observatory
 pip install -e .
 ```
 
-### From PyPI (when published)
-
-```bash
-pip install vulnova
-```
-
-Both `vulnova` and the short alias `vn` are installed as console commands.
+This installs the `vulnova` command (and the short alias `vn`). If you'd rather
+not install it, run everything through the module form instead:
+`python -m vulnova.cli …`
 
 ### Requirements
 
 - Python 3.10+
-- Optional: [Ollama](https://ollama.ai) for local AI briefings
+- No API keys required — every data source works key-free
 
 ---
 
@@ -93,23 +81,14 @@ Both `vulnova` and the short alias `vn` are installed as console commands.
 ```bash
 # Launch the web dashboard (opens your browser at http://127.0.0.1:5000)
 vulnova web
-
-# Configure API keys (optional but recommended for higher rate limits)
-vulnova set-key nvd YOUR_NVD_API_KEY
-vulnova set-key github YOUR_GITHUB_TOKEN
-
-# Health check
-vulnova doctor
+# …or, without installing the package:
+python -m vulnova.cli web
 
 # Look up a CVE
 vulnova lookup CVE-2024-3094
 
 # Search by component + version
 vulnova lookup "apache httpd 2.4.49"
-
-# Scan a live URL, or batch-scan from a file
-vulnova scan https://example.com
-vulnova batch urls.txt --concurrency 10
 ```
 
 ---
@@ -122,9 +101,12 @@ Start it with:
 vulnova web                       # http://127.0.0.1:5000
 vulnova web --port 8080           # custom port
 vulnova web --host 0.0.0.0        # bind all interfaces
+
+# If the package isn't installed, use the module form:
+python -m vulnova.cli web --port 5000
 ```
 
-The dashboard has three pages, switchable from the top navigation.
+The dashboard has four pages, switchable from the top navigation.
 
 ### Atlas — CVE Catalog
 
@@ -160,6 +142,38 @@ sources, refreshed every 15 minutes and cached locally.
 | **Research** | SANS Internet Storm Center · Palo Alto Unit 42 · Cisco Talos Intelligence · Rapid7 Blog · Google Project Zero |
 | **Advisories** | ZDI Published Advisories · ZDI Upcoming Advisories |
 
+### Flare — Advisories
+
+Security advisories aggregated from **multiple vendor sources** (no API key
+needed), with first-class support for the ones VulNova's CVE-anchored views
+miss — advisories that have **no CVE assigned**.
+
+Sources (all free, no API key):
+- **GitHub Advisory Database** (GHSA) — open-source ecosystems (npm, PyPI, Go, Rust, …), many with no CVE
+- **Ubuntu Security Notices** (USN)
+- **Red Hat Security Advisories** (RHSA)
+- **Microsoft Security Response Center** (MSRC) — latest Patch Tuesday
+- **Palo Alto Networks** advisories
+- **VMware** — recent VMware vulnerabilities via NVD (Broadcom offers no clean no-key feed)
+- **OSV.dev** — open-source ecosystem advisories (crates.io/RustSec, PyPI/PYSEC, Go); the primary **no-CVE** source, since these databases carry many advisories with no CVE assigned
+
+> **Where the no-CVE advisories come from.** The vendor PSIRTs (Palo Alto,
+> Microsoft, Red Hat, VMware) are CVE Numbering Authorities — they mint their
+> own CVE IDs at disclosure, so their advisories almost always ship *with* a
+> CVE. The no-CVE gap lives in the open-source ecosystems, which is why
+> **GHSA** and **OSV.dev** (RustSec/PyPI/Go) are Flare's no-CVE sources.
+
+Features:
+- **"No CVE" filter** — the headline use case: surface advisories that never
+  got (or don't yet have) a CVE
+- Filter by **source**, **severity**, **ecosystem**, and **type**, plus keyword search
+- Each card shows the advisory ID (GHSA/USN/RHSA), source, severity + CVSS,
+  affected packages, CWEs, EPSS, and — when present — a CVE badge linking
+  straight into Atlas
+
+New vendor sources are pluggable: add a small client that returns the shared
+`Advisory` shape and register it — the merge, filters, and UI come for free.
+
 ### Signal — Source Status
 
 A live status board for every data feed VulNova depends on: whether it's
@@ -183,31 +197,6 @@ vulnova lookup "openssl 3.0.7"
 
 # By CPE string
 vulnova lookup "cpe:2.3:a:apache:http_server:2.4.49:*:*:*:*:*:*:*"
-
-# With an AI briefing
-vulnova lookup CVE-2024-3094 --summarize
-
-# Generate a report
-vulnova lookup CVE-2024-3094 --report report.html
-```
-
-### Asset Scanning
-
-Fingerprint a live URL and automatically scan for CVEs per detected technology:
-
-```bash
-vulnova scan https://target.com
-vulnova scan https://target.com --report scan_results.html
-```
-
-### Batch Scanning
-
-Scan multiple URLs from a file (one URL per line) with concurrency control:
-
-```bash
-vulnova batch urls.txt
-vulnova batch urls.txt --concurrency 20
-vulnova batch urls.txt -c 10 --report batch_report.html
 ```
 
 ### Output Formats
@@ -217,38 +206,6 @@ vulnova lookup CVE-2023-44487                 # rich terminal table (default)
 vulnova -o json lookup CVE-2023-44487         # JSON (pipe to jq, scripts)
 vulnova -o csv lookup "apache httpd 2.4.49"   # CSV
 vulnova -o silent lookup CVE-2023-44487       # silent (exit code only)
-```
-
-### Reports
-
-```bash
-vulnova lookup CVE-2024-3094 --report vuln_report.md    # Markdown
-vulnova lookup CVE-2024-3094 --report vuln_report.html  # HTML (prints to PDF)
-vulnova scan https://target.com --report scan.html
-```
-
-### Doctor
-
-```bash
-vulnova doctor
-```
-
-Checks API key configuration, connectivity to all data sources, SQLite cache
-health, ExploitDB CSV availability, and local LLM (Ollama) readiness.
-
-### API Key Management
-
-```bash
-vulnova set-key nvd YOUR_KEY       # https://nvd.nist.gov/developers/request-an-api-key
-vulnova set-key github YOUR_TOKEN  # higher GitHub API rate limits
-```
-
-Keys are stored in `~/.vulnova/keys.json` with restricted permissions. You can
-also use environment variables:
-
-```bash
-export VULNOVA_NVD_KEY=your_key
-export VULNOVA_GITHUB_TOKEN=your_token
 ```
 
 ---
@@ -276,19 +233,6 @@ VulNova produces a deterministic **0-100 priority score** for every CVE:
 
 ---
 
-## Local AI Briefings
-
-VulNova uses [Ollama](https://ollama.ai) for offline, private AI triage
-briefings. All inference happens locally — no data leaves your machine.
-
-```bash
-curl -fsSL https://ollama.ai/install.sh | sh   # install Ollama
-ollama pull mistral                            # pull a model
-vulnova lookup CVE-2024-3094 --summarize       # generate a briefing
-```
-
----
-
 ## Data Sources
 
 | Source | What it provides | Update frequency |
@@ -301,19 +245,25 @@ vulnova lookup CVE-2024-3094 --summarize       # generate a briefing
 | [Nuclei Templates](https://github.com/projectdiscovery/nuclei-templates) | Detection templates (path-based) | ~12 h cache |
 | [Metasploit](https://github.com/rapid7/metasploit-framework) | Exploit modules (offline metadata index) | ~7 d cache |
 | [Vulhub](https://github.com/vulhub/vulhub) | Docker PoC environments | Real-time |
+| [GitHub Advisory DB](https://github.com/advisories) | Ecosystem advisories for Flare (incl. no-CVE) | ~1 h cache |
+| [Ubuntu USN](https://ubuntu.com/security/notices) | Ubuntu security notices for Flare | ~1 h cache |
+| [Red Hat RHSA](https://access.redhat.com/security/security-updates/) | Red Hat security advisories for Flare | ~1 h cache |
+| [Microsoft MSRC](https://msrc.microsoft.com/update-guide) | Microsoft advisories for Flare (CVRF) | ~1 h cache |
+| [Palo Alto](https://security.paloaltonetworks.com/) | Palo Alto advisories for Flare (RSS) | ~1 h cache |
+| VMware (via [NVD](https://nvd.nist.gov/)) | Recent VMware vulnerabilities for Flare | ~1 h cache |
+| [OSV.dev](https://osv.dev) | Open-source advisories (RustSec/PyPI/Go) for Flare — the no-CVE source | ~6 h cache |
 | 14 news feeds (RSS/Atom) | Cyber news for Pulse | Every 15 min |
 
 ---
 
 ## Configuration
 
-Configuration is stored in `~/.vulnova/`:
+Configuration and cached data live in `~/.vulnova/`:
 
 ```
 ~/.vulnova/
-├── config.json        # General settings (cache TTL, LLM model, etc.)
-├── keys.json          # API keys (NVD, GitHub) - chmod 600
-├── cache.db           # SQLite response cache
+├── config.json        # General settings (e.g. cache TTL)
+├── cache.db           # SQLite response cache (all sources, TTL-based)
 └── exploitdb/
     └── files_exploits.csv  # Local ExploitDB mirror (downloaded on demand)
 ```
@@ -322,9 +272,7 @@ Configuration is stored in `~/.vulnova/`:
 
 ```json
 {
-  "cache_ttl": 86400,
-  "llm_model": "mistral",
-  "llm_endpoint": "http://localhost:11434"
+  "cache_ttl": 86400
 }
 ```
 
@@ -334,22 +282,16 @@ Configuration is stored in `~/.vulnova/`:
 
 ```
 vulnova/
-├── cli.py                 # Click CLI entry point (lookup, scan, batch, doctor, web, set-key)
+├── cli.py                 # Click CLI entry point (web, lookup)
 ├── commands/
-│   ├── lookup.py          # CVE lookup command
-│   ├── scan.py            # Asset scanning command
-│   ├── batch.py           # Batch scanning command
-│   └── doctor.py          # Health check command
+│   └── lookup.py          # CVE lookup command
 ├── core/
-│   ├── config.py          # Configuration & key management
+│   ├── config.py          # Configuration & cache settings
 │   ├── cache.py           # SQLite TTL cache
 │   ├── triage.py          # Risk scoring engine
 │   ├── cpe_match.py       # Smart CPE matching (rapidfuzz)
-│   ├── scanner.py         # URL fingerprinting
-│   ├── batch.py           # Async batch scanner
+│   ├── cvss.py            # CVSS parsing / scoring helpers
 │   ├── tagger.py          # News entity tagger (CVE/agency/product/country/keyword)
-│   ├── llm.py             # Local LLM client (Ollama)
-│   ├── report.py          # Report generation (MD/HTML)
 │   └── output.py          # Output formatting (Rich)
 ├── sources/
 │   ├── nvd.py             # NVD API v2
@@ -360,11 +302,13 @@ vulnova/
 │   ├── nuclei.py          # Nuclei Templates (path-based resolution)
 │   ├── metasploit.py      # Metasploit modules (offline metadata index)
 │   ├── vulhub.py          # Vulhub Docker environments
-│   └── news.py            # Pulse news aggregator (14 RSS/Atom feeds)
+│   ├── news.py            # Pulse news aggregator (14 RSS/Atom feeds)
+│   ├── ghsa.py            # GitHub Advisory Database (Flare)
+│   └── advisories.py      # Flare multi-source aggregator (GHSA + Ubuntu + Red Hat + MSRC + Palo Alto + VMware + OSV)
 └── web/
-    ├── app.py             # Flask app (CVE table + Pulse routes/APIs)
-    ├── templates/         # index.html (Atlas), news.html (Pulse), cve.html, sources.html (Signal)
-    └── static/            # style.css, app.js, news.js, cve.js, sources.js
+    ├── app.py             # Flask app (Atlas / Pulse / Flare / Signal routes + APIs)
+    ├── templates/         # index.html (Atlas), news.html (Pulse), flare.html, sources.html (Signal), cve.html
+    └── static/            # style.css, app.js, news.js, flare.js, cve.js, sources.js
 ```
 
 ---
@@ -382,8 +326,8 @@ Contributions are welcome:
 ### Development Setup
 
 ```bash
-git clone https://github.com/vulnova/vulnova.git
-cd vulnova
+git clone https://github.com/nikheelkumar16/vulnova-observatory.git
+cd vulnova-observatory
 pip install -e ".[dev]"
 ```
 

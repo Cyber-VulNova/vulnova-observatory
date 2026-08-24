@@ -23,6 +23,8 @@ from vulnova.core.cwe_data import lookup_cwe
 from vulnova.core.triage import compute_triage_score
 from vulnova.sources.epss import EPSSClient
 from vulnova.sources.exploitdb import ExploitDBClient
+from vulnova.sources.advisories import ALL_SOURCES, fetch_all_advisories
+from vulnova.sources.ghsa import GHSAClient
 from vulnova.sources.github_poc import GitHubPoCClient
 from vulnova.sources.kev import KEVClient
 from vulnova.sources.metasploit import MetasploitClient
@@ -289,6 +291,22 @@ SOURCE_CATALOG = [
         "refresh_note": "Environment index cached ~24 h.",
     },
     {
+        "key": "ghsa", "name": "GitHub Advisory Database", "category": "Advisories",
+        "namespace": "ghsa", "github": True,
+        "purpose": "Powers Flare — security advisories for open-source ecosystems (npm, PyPI, Go, Rust…), including the many that have no CVE assigned.",
+        "check_url": "https://api.github.com/advisories?per_page=1",
+        "doc_url": "https://github.com/advisories",
+        "refresh_note": "Advisory pages cached ~1 h.",
+    },
+    {
+        "key": "osv", "name": "OSV.dev (RustSec / PyPI / Go)", "category": "Advisories",
+        "namespace": "adv_osv",
+        "purpose": "Powers Flare's no-CVE coverage — open-source ecosystem advisories (crates.io/RustSec, PyPI/PYSEC, Go), a large share of which have no CVE assigned.",
+        "check_url": "https://osv-vulnerabilities.storage.googleapis.com/crates.io/all.zip",
+        "doc_url": "https://osv.dev",
+        "refresh_note": "Ecosystem dumps downloaded + cached ~6 h.",
+    },
+    {
         "key": "news", "name": "Pulse News Feeds (14 sources)", "category": "News",
         "namespace": "news",
         "purpose": "Aggregates RSS/Atom feeds from 14 security outlets (The Hacker News, BleepingComputer, ZDI, Krebs, Talos, …) for the Pulse feed, with entity tagging.",
@@ -356,6 +374,50 @@ def create_app() -> Flask:
     def cve_page(cve_id):
         """Standalone CVE detail page (exploits, timeline, references)."""
         return render_template("cve.html", cve_id=cve_id.upper())
+
+    @app.route("/flare")
+    def flare_page():
+        """Flare — vendor / GHSA advisories (incl. those with no CVE)."""
+        return render_template("flare.html")
+
+    @app.route("/api/advisories", methods=["GET"])
+    def api_advisories():
+        """Advisories from the GitHub Advisory Database.
+
+        Query params:
+            sources: comma list of github,ubuntu,redhat (default all)
+            type: reviewed | unreviewed | malware (GHSA only; default reviewed)
+            limit: max advisories to gather (default 300)
+            refresh: '1' to bypass cache
+        """
+        try:
+            sources_param = request.args.get("sources", "").strip().lower()
+            sources = [s for s in sources_param.split(",") if s in ALL_SOURCES] or None
+            adv_type = request.args.get("type", "reviewed").strip().lower()
+            limit = min(max(int(request.args.get("limit", 600)), 1), 800)
+            force = request.args.get("refresh", "") in ("1", "true", "yes")
+
+            config = Config()
+            cache = Cache(config.cache_db_path, config.cache_ttl)
+            advisories = fetch_all_advisories(
+                config=config, cache=cache, sources=sources,
+                adv_type=adv_type, limit=limit, force=force,
+            )
+            rows = [a.to_dict() for a in advisories]
+            cache.close()
+
+            no_cve = sum(1 for r in rows if not r["has_cve"])
+            ecosystems = sorted({e for r in rows for e in r["ecosystems"]})
+            source_names = sorted({r["source"] for r in rows})
+            return jsonify({
+                "advisories": rows,
+                "total": len(rows),
+                "no_cve": no_cve,
+                "ecosystems": ecosystems,
+                "sources": source_names,
+            })
+        except Exception as e:
+            return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
     @app.route("/sources")
     def sources_page():
@@ -502,6 +564,7 @@ def create_app() -> Flask:
             keyword = request.args.get("keyword", "").strip()
             severity = request.args.get("severity", "").strip()
             days_back = int(request.args.get("days", 0) or 0)
+            force = request.args.get("refresh", "") in ("1", "true", "yes")
 
             config = Config()
             cache = Cache(config.cache_db_path, config.cache_ttl)
@@ -513,12 +576,13 @@ def create_app() -> Flask:
             if feed in ("kev", "ransomware"):
                 payload = _kev_feed(
                     feed, page, size, keyword,
-                    epss_client, kev_client, exploitdb, edb_ready,
+                    epss_client, kev_client, exploitdb, edb_ready, force=force,
                 )
             else:
                 payload = _recent_feed(
                     page, size, keyword, severity, days_back,
                     config, cache, epss_client, kev_client, exploitdb, edb_ready,
+                    force=force,
                 )
 
             cache.close()
@@ -725,12 +789,18 @@ def create_app() -> Flask:
 # ─── Feed builders ────────────────────────────────────────────────────────────
 
 def _recent_feed(page, size, keyword, severity, days_back,
-                 config, cache, epss_client, kev_client, exploitdb, edb_ready):
+                 config, cache, epss_client, kev_client, exploitdb, edb_ready,
+                 force=False):
     """Build a page of the NVD recent-CVE feed with full enrichment."""
     nvd = NVDClient(config=config, cache=cache)
+    # On a forced refresh, warm the KEV catalog once so per-row lookups below
+    # use the freshly fetched data (get_entry reads the in-memory catalog).
+    if force:
+        kev_client.get_all(force=True)
     cves, total = nvd.list_cves(
         page=page, results_per_page=size,
         keyword=keyword, cvss_severity=severity, days_back=days_back,
+        force=force,
     )
     if not cves:
         return {"rows": [], "total": total, "page": page, "size": size, "pages": 0, "feed": "recent"}
@@ -779,9 +849,10 @@ def _recent_feed(page, size, keyword, severity, days_back,
             "pages": total_pages, "feed": "recent"}
 
 
-def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb_ready):
+def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb_ready,
+              force=False):
     """Build a page from the CISA KEV catalog (optionally ransomware-only)."""
-    entries = kev_client.get_all()
+    entries = kev_client.get_all(force=force)
 
     if feed == "ransomware":
         entries = [e for e in entries if (e.known_ransomware_use or "").lower() == "known"]

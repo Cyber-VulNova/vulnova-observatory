@@ -69,13 +69,17 @@ class KEVClient:
         self.cache = cache
         self._catalog: Optional[dict[str, KEVEntry]] = None
 
-    def _load_catalog(self) -> dict[str, KEVEntry]:
-        """Load the full KEV catalog, using cache if available."""
-        if self._catalog is not None:
+    def _load_catalog(self, force: bool = False) -> dict[str, KEVEntry]:
+        """Load the full KEV catalog, using cache if available.
+
+        Args:
+            force: bypass the in-memory and on-disk cache and refetch from CISA.
+        """
+        if self._catalog is not None and not force:
             return self._catalog
 
         # Check cache (longer TTL since KEV updates ~weekly)
-        if self.cache:
+        if self.cache and not force:
             cached = self.cache.get(self.NAMESPACE, self.CATALOG_KEY)
             if cached:
                 self._catalog = {
@@ -143,9 +147,13 @@ class KEVClient:
         catalog = self._load_catalog()
         return catalog.get(cve_id.upper())
 
-    def get_all(self) -> list[KEVEntry]:
-        """Get all entries in the KEV catalog."""
-        catalog = self._load_catalog()
+    def get_all(self, force: bool = False) -> list[KEVEntry]:
+        """Get all entries in the KEV catalog.
+
+        Args:
+            force: bypass the cache and refetch the catalog from CISA.
+        """
+        catalog = self._load_catalog(force=force)
         return list(catalog.values())
 
     @property

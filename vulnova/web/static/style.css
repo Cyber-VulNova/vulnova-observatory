@@ -1262,3 +1262,104 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .src-doc { margin-top: 10px; font-size: 12px; color: var(--accent); text-decoration: none; align-self: flex-start; }
 .src-doc:hover { text-decoration: underline; }
+
+/* ─── Flare — Advisories ───────────────────────────────────────────────── */
+
+.advisory-feed {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 14px;
+    padding-bottom: 40px;
+}
+
+.advisory-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: border-color 0.15s;
+}
+.advisory-card:hover { border-color: var(--accent); }
+.sev-border-critical { border-left-color: var(--danger); }
+.sev-border-high { border-left-color: var(--orange); }
+.sev-border-medium { border-left-color: var(--warning); }
+.sev-border-low { border-left-color: var(--success); }
+.sev-border-unknown { border-left-color: var(--text-dim); }
+
+.adv-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+.adv-src {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+}
+.adv-ghsa {
+    font-family: 'SF Mono','Consolas',monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--info);
+    text-decoration: none;
+}
+.adv-ghsa:hover { text-decoration: underline; }
+
+.adv-cve {
+    font-family: 'SF Mono','Consolas',monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+    text-decoration: none;
+}
+.adv-cve.has { background: rgba(52,152,219,0.18); color: #5dade2; }
+.adv-cve.none { background: #b8860b; color: #fff; }
+
+.adv-date { margin-left: auto; font-size: 11px; color: var(--text-dim); font-family: 'SF Mono','Consolas',monospace; }
+
+.adv-summary {
+    font-size: 14px;
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin-bottom: 10px;
+}
+
+.adv-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.adv-pkg {
+    font-size: 11px;
+    font-family: 'SF Mono','Consolas',monospace;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+.adv-cwe {
+    font-size: 11px;
+    background: rgba(155,89,182,0.15);
+    color: #bb8fce;
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+.adv-epss {
+    font-size: 11px;
+    color: var(--warning);
+    margin-left: auto;
+}
+
+/* GHSA severity badge variants (GHSA uses lowercase, ensure coverage) */
+.sev-critical { background: var(--danger); color: #fff; }
+.sev-high { background: var(--orange); color: #fff; }
+.sev-medium { background: var(--warning); color: #1a1a2e; }
+.sev-low { background: var(--success); color: #fff; }
+.sev-unknown { background: var(--text-dim); color: #fff; }

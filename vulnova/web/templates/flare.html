@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VulNova Flare — Advisories</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <a href="/" class="brand-logo"><img src="{{ url_for('static', filename='vulnova-logo.svg') }}" alt="VulNova" class="brand-img"></a>
+            <span class="brand-sub">Observatory</span>
+            <nav class="topnav">
+                <a href="/" class="topnav-link">Atlas · CVEs</a>
+                <a href="/news" class="topnav-link">Pulse · News</a>
+                <a href="/flare" class="topnav-link active">Flare · Advisories</a>
+                <a href="/sources" class="topnav-link">Signal · Sources</a>
+            </nav>
+        </div>
+        <div class="topbar-stats">
+            <span class="stat-pill" id="stat-total">— advisories</span>
+            <button id="refresh-btn" class="btn btn-ghost btn-sm">⟳ Refresh</button>
+        </div>
+    </header>
+
+    <div class="atlas-intro">
+        <span class="atlas-title">Flare</span>
+        <span class="atlas-tag">Vendor &amp; open-source advisories — including the ones with no CVE assigned yet</span>
+    </div>
+
+    <div class="filter-pills" id="cve-pills">
+        <span class="pills-label">Show:</span>
+        <button class="pill pill-active" data-cve="all">All advisories</button>
+        <button class="pill" data-cve="none">🚩 No CVE assigned</button>
+        <button class="pill" data-cve="has">CVE-linked</button>
+    </div>
+
+    <div class="toolbar">
+        <div class="toolbar-group search-group">
+            <input type="text" id="flare-search" placeholder="Search advisories (package, summary, GHSA/CVE id)…" autocomplete="off">
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Severity</label>
+            <select id="sev-filter">
+                <option value="">All</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Source</label>
+            <select id="source-filter">
+                <option value="">All sources</option>
+                <option value="GitHub Advisory Database">GitHub (GHSA)</option>
+                <option value="Ubuntu Security Notices">Ubuntu (USN)</option>
+                <option value="Red Hat">Red Hat (RHSA)</option>
+                <option value="Palo Alto Networks">Palo Alto</option>
+                <option value="Microsoft">Microsoft (MSRC)</option>
+                <option value="VMware">VMware (via NVD)</option>
+                <option value="OSV">OSV (RustSec / PyPI / Go)</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Ecosystem</label>
+            <select id="eco-filter">
+                <option value="">All</option>
+            </select>
+        </div>
+        <div class="toolbar-group">
+            <label class="filter-label">Type</label>
+            <select id="type-filter">
+                <option value="reviewed" selected>Reviewed</option>
+                <option value="malware">Malware</option>
+                <option value="unreviewed">Unreviewed</option>
+            </select>
+        </div>
+    </div>
+
+    <main class="table-wrap">
+        <div id="flare-feed" class="advisory-feed">
+            <div class="table-loading">
+                <div class="spinner"></div>
+                <div>Loading advisories from the GitHub Advisory Database…</div>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='flare.js') }}"></script>
+</body>
+</html>
