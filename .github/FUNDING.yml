@@ -1,3 +1,4 @@
 # Shows a "Sponsor" button on the GitHub repository.
-# Replace the value if your Buy Me a Coffee username is different.
-buy_me_a_coffee: nikheelkumar16
+# Set this to your Buy Me a Coffee username (using the project brand keeps it
+# non-personal). Change "vulnova" to your actual registered handle.
+buy_me_a_coffee: vulnova
