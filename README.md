@@ -411,6 +411,23 @@ pip install -e ".[dev]"
 
 ---
 
+## Support
+
+VulNova Observatory is free and maintained in my spare time. If it's useful to
+you, you can help cover the upkeep (hosting, data-source monitoring, and new
+features):
+
+<a href="https://www.buymeacoffee.com/nikheelkumar16" target="_blank">
+  <img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-support%20maintenance-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee">
+</a>
+
+☕ **[buymeacoffee.com/nikheelkumar16](https://www.buymeacoffee.com/nikheelkumar16)**
+
+You can also use the **Sponsor** button at the top of the repository. Every bit
+is appreciated and goes toward keeping the project running.
+
+---
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
