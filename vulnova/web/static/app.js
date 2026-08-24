@@ -17,7 +17,6 @@ const state = {
     keyword: '',
     severity: '',
     days: 30,
-    kevOnly: false,
     highEpssOnly: false,  // client-side (High EPSS preset)
     preset: 'all',
     totalPages: 0,
@@ -37,10 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('refresh-btn').addEventListener('click', () => loadPage(true));
     document.getElementById('severity-filter').addEventListener('change', applySearch);
     document.getElementById('days-filter').addEventListener('change', applySearch);
-    document.getElementById('kev-filter').addEventListener('change', () => {
-        state.kevOnly = document.getElementById('kev-filter').checked;
-        render();
-    });
     document.getElementById('page-size').addEventListener('change', (e) => {
         state.size = parseInt(e.target.value);
         state.page = 1;
@@ -115,8 +110,6 @@ function applyPreset(preset) {
     state.preset = preset;
     state.page = 1;
     state.highEpssOnly = false;
-    state.kevOnly = false;
-    document.getElementById('kev-filter').checked = false;
 
     const daysSel = document.getElementById('days-filter');
     const sevSel = document.getElementById('severity-filter');
@@ -178,10 +171,9 @@ function clearFilters() {
     document.getElementById('severity-filter').disabled = false;
     document.getElementById('days-filter').value = '30';
     document.getElementById('days-filter').disabled = false;
-    document.getElementById('kev-filter').checked = false;
     Object.assign(state, {
         feed: 'recent', keyword: '', severity: '', days: 30,
-        kevOnly: false, highEpssOnly: false, preset: 'all', page: 1,
+        highEpssOnly: false, preset: 'all', page: 1,
     });
     document.querySelectorAll('#filter-pills .pill').forEach(p =>
         p.classList.toggle('pill-active', p.dataset.preset === 'all'));
@@ -241,7 +233,6 @@ function render() {
     const tbody = document.getElementById('cve-tbody');
 
     let rows = state.rows.slice();
-    if (state.kevOnly) rows = rows.filter(r => r.in_kev);
     if (state.highEpssOnly) rows = rows.filter(r => r.epss_percent >= 50);
 
     rows.sort((a, b) => {

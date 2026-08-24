@@ -21,7 +21,7 @@
         </div>
         <div class="topbar-stats" id="topbar-stats">
             <span class="stat-pill" id="stat-total">— CVEs</span>
-            <button id="refresh-btn" class="btn btn-ghost btn-sm" title="Force-fetch fresh CVE data (bypass cache)">⟳ Refresh</button>
+            <button id="refresh-btn" class="btn btn-ghost btn-sm refresh-btn-hidden" title="Force-fetch fresh CVE data (bypass cache)">⟳ Refresh</button>
         </div>
     </header>
 
@@ -65,10 +65,6 @@
                 <option value="MEDIUM">Medium</option>
                 <option value="LOW">Low</option>
             </select>
-        </div>
-        <div class="toolbar-group">
-            <label class="filter-label">KEV only</label>
-            <input type="checkbox" id="kev-filter" class="checkbox">
         </div>
         <div class="toolbar-group">
             <label class="filter-label">Sort by</label>

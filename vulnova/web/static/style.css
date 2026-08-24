@@ -1207,6 +1207,35 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .sources-page .page-header { margin-bottom: 24px; }
 .sources-page .checked-at { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
 
+/* Manual force-refresh buttons (Atlas / Pulse / Flare) are hidden by default.
+   Freshness is handled by the 6-hour auto-refresh, and hiding these avoids
+   visitors on a public deployment spamming upstream APIs. The buttons and
+   their JS wiring are intentionally kept — self-hosters who want a manual
+   refresh can simply DELETE this one rule (or drop the class in the templates)
+   to show them again. */
+.refresh-btn-hidden { display: none !important; }
+
+/* Auto-refresh status banner */
+.autorefresh-banner:empty { display: none; }
+.autorefresh-banner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 11px 16px;
+    margin-bottom: 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-elevated, rgba(255,255,255,0.03));
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+.autorefresh-banner .ar-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.autorefresh-banner .ar-label { font-weight: 700; color: var(--text-primary); letter-spacing: 0.02em; }
+.autorefresh-banner .ar-item { color: var(--text-secondary); }
+.autorefresh-banner .ar-item strong { color: var(--text-primary); font-weight: 600; }
+.autorefresh-banner .src-abs { color: var(--text-dim); font-size: 11px; }
+
 .pill-ok { color: var(--success); border-color: var(--success); }
 .pill-warn { color: var(--warning); border-color: var(--warning); }
 .pill-err { color: var(--danger); border-color: var(--danger); }

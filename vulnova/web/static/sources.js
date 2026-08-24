@@ -46,6 +46,53 @@ async function load() {
     } catch (err) {
         grid.innerHTML = `<div class="table-error">❌ ${escapeHtml(err.message)}</div>`;
     }
+
+    loadRefreshStatus();
+}
+
+async function loadRefreshStatus() {
+    const banner = document.getElementById('autorefresh-banner');
+    if (!banner) return;
+    try {
+        const resp = await fetch('/api/refresh-status');
+        const s = await resp.json();
+        if (s.error) { banner.innerHTML = ''; return; }
+
+        const last = s.last_refresh_ts
+            ? `${relTime(s.seconds_since_last)} ago <span class="src-abs">(${new Date(s.last_refresh_ts * 1000).toLocaleString()})</span>`
+            : 'never yet';
+
+        if (s.auto_enabled) {
+            const next = s.next_refresh_ts
+                ? `in ${relTime(s.seconds_until_next)} <span class="src-abs">(${new Date(s.next_refresh_ts * 1000).toLocaleString()})</span>`
+                : 'pending';
+            banner.innerHTML = `
+                <span class="ar-dot st-ok"></span>
+                <span class="ar-label">Auto-refresh</span>
+                <span class="ar-item">every <strong>${s.interval_hours}h</strong></span>
+                <span class="ar-item">Last: <strong>${last}</strong></span>
+                <span class="ar-item">Next: <strong>${next}</strong></span>`;
+        } else {
+            banner.innerHTML = `
+                <span class="ar-dot st-dim"></span>
+                <span class="ar-label">Auto-refresh off</span>
+                <span class="ar-item">Data refreshes on demand (per-source cache TTL).</span>
+                <span class="ar-item">Last full refresh: <strong>${last}</strong></span>`;
+        }
+    } catch (err) {
+        banner.innerHTML = '';
+    }
+}
+
+// Humanize a number of seconds into "5m", "3h", "2d".
+function relTime(seconds) {
+    const s = Math.max(0, Math.round(seconds || 0));
+    if (s < 60) return s + 's';
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + 'm';
+    const h = Math.floor(m / 60);
+    if (h < 24) return h + 'h ' + (m % 60) + 'm';
+    return Math.floor(h / 24) + 'd ' + (h % 24) + 'h';
 }
 
 function renderCard(s) {

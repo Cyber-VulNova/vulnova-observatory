@@ -75,14 +75,29 @@ def set_key(key_name, key_value):
 @click.option("--host", "-h", default="127.0.0.1", help="Host to bind to")
 @click.option("--port", "-p", type=int, default=5000, help="Port to listen on")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
-def web(host, port, debug):
+@click.option("--refresh-hours", type=float, default=0.0,
+              help="Auto-refresh all data sources every N hours (e.g. 6). 0 = off.")
+def web(host, port, debug, refresh_hours):
     """Launch the VulNova web dashboard in your browser."""
     from vulnova.web.app import run_web
     click.echo(f"[*] VulNova Web UI starting at http://{host}:{port}")
+    if refresh_hours and refresh_hours > 0:
+        click.echo(f"[*] Auto-refresh enabled: every {refresh_hours} h")
     click.echo("[*] Press Ctrl+C to stop")
     import webbrowser
     webbrowser.open(f"http://{host}:{port}")
-    run_web(host=host, port=port, debug=debug)
+    run_web(host=host, port=port, debug=debug, refresh_hours=refresh_hours)
+
+
+@main.command()
+def refresh():
+    """Force-refresh all data-source caches (for cron / scheduled runs)."""
+    from vulnova.core.refresh import refresh_all_sources
+    click.echo("[*] Refreshing all VulNova data sources…")
+    summary = refresh_all_sources(force=True)
+    for name, result in summary.items():
+        click.echo(f"    {name}: {result}")
+    click.echo("[+] Refresh complete.")
 
 
 if __name__ == "__main__":

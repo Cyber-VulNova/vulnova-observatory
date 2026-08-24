@@ -6,6 +6,7 @@ public-exploit status, and a deterministic triage priority score. Also serves
 the VulNova Pulse cyber-news feed.
 """
 
+import os
 import time
 import traceback
 from collections import Counter
@@ -783,6 +784,25 @@ def create_app() -> Flask:
         except Exception as e:
             return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
 
+    @app.route("/api/refresh-status", methods=["GET"])
+    def api_refresh_status():
+        """Report auto-refresh state: last run, next run, and interval."""
+        try:
+            from vulnova.core.refresh import get_refresh_status
+            return jsonify(get_refresh_status())
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    # Optional in-process auto-refresh scheduler. Enable by setting
+    # VULNOVA_REFRESH_HOURS (e.g. 6) or launching `vulnova web --refresh-hours 6`.
+    try:
+        _hours = float(os.environ.get("VULNOVA_REFRESH_HOURS", "0") or 0)
+    except ValueError:
+        _hours = 0.0
+    if _hours > 0:
+        from vulnova.core.refresh import start_background_refresh
+        start_background_refresh(_hours)
+
     return app
 
 
@@ -911,7 +931,15 @@ def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb
             "pages": total_pages, "feed": feed}
 
 
-def run_web(host: str = "127.0.0.1", port: int = 5000, debug: bool = False):
-    """Run the VulNova web server."""
+def run_web(host: str = "127.0.0.1", port: int = 5000, debug: bool = False,
+            refresh_hours: float = 0.0):
+    """Run the VulNova web server.
+
+    Args:
+        refresh_hours: if > 0, start an in-process scheduler that force-refreshes
+            all data sources on that interval (e.g. 6). 0 disables it.
+    """
+    if refresh_hours and refresh_hours > 0:
+        os.environ["VULNOVA_REFRESH_HOURS"] = str(refresh_hours)
     app = create_app()
     app.run(host=host, port=port, debug=debug)

@@ -180,6 +180,36 @@ A live status board for every data feed VulNova depends on: whether it's
 reachable right now, when it last refreshed, how many items are cached, and
 what each source is used for. Grouped by category with a one-click re-check.
 
+When auto-refresh is enabled, Signal also shows a banner with the interval, the
+**last refresh** time, and the **next refresh** time.
+
+---
+
+## Automatic Refresh
+
+By default data is fetched on demand and cached per-source (each with its own
+TTL — NVD ~30 min, GHSA ~1 h, KEV/OSV ~6 h, news ~15 min). You can also have
+VulNova proactively force-refresh every source on a fixed interval so the
+dashboard always serves warm, current data.
+
+**In-process scheduler** (works under any WSGI server):
+
+```bash
+vulnova web --refresh-hours 6            # refresh every 6 hours
+# or set an environment variable (picked up by create_app):
+#   VULNOVA_REFRESH_HOURS=6
+```
+
+**External scheduler** (recommended for multi-worker production) — run the
+one-shot command from cron / Task Scheduler / a PaaS scheduled job:
+
+```bash
+vulnova refresh                          # force-refresh all caches once
+```
+
+The current state is exposed at `GET /api/refresh-status` (auto on/off,
+interval, last refresh, next refresh) and surfaced in the Signal page banner.
+
 ---
 
 ## CLI Usage
