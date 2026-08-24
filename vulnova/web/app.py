@@ -6,9 +6,9 @@ public-exploit status, and a deterministic triage priority score. Also serves
 the VulNova Pulse cyber-news feed.
 """
 
+import logging
 import os
 import time
-import traceback
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -34,6 +34,9 @@ from vulnova.sources.nuclei import NucleiClient
 from vulnova.sources.nvd import NVDClient
 from vulnova.sources.vulhub import VulhubClient
 from vulnova.core.tagger import extract_tags, extract_product_text
+
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Product / vendor prettification ──────────────────────────────────────────
@@ -417,8 +420,9 @@ def create_app() -> Flask:
                 "ecosystems": ecosystems,
                 "sources": source_names,
             })
-        except Exception as e:
-            return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+        except Exception:
+            logger.exception("Unhandled error handling API request")
+            return jsonify({"error": "Internal server error"}), 500
 
     @app.route("/sources")
     def sources_page():
@@ -509,8 +513,9 @@ def create_app() -> Flask:
                 "total": len(sources),
                 "checked_at": time.time(),
             })
-        except Exception as e:
-            return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+        except Exception:
+            logger.exception("Unhandled error handling API request")
+            return jsonify({"error": "Internal server error"}), 500
 
     # ─── News API ─────────────────────────────────────────────────────
 
@@ -541,8 +546,9 @@ def create_app() -> Flask:
                     for s in SOURCES
                 ],
             })
-        except Exception as e:
-            return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+        except Exception:
+            logger.exception("Unhandled error handling API request")
+            return jsonify({"error": "Internal server error"}), 500
 
     # ─── CVE list API ─────────────────────────────────────────────────
 
@@ -589,8 +595,9 @@ def create_app() -> Flask:
             cache.close()
             return jsonify(payload)
 
-        except Exception as e:
-            return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+        except Exception:
+            logger.exception("Unhandled error handling API request")
+            return jsonify({"error": "Internal server error"}), 500
 
     # ─── CVE detail API (row expander) ────────────────────────────────
 
@@ -781,8 +788,9 @@ def create_app() -> Flask:
                 "related": related,
             })
 
-        except Exception as e:
-            return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
+        except Exception:
+            logger.exception("Unhandled error handling API request")
+            return jsonify({"error": "Internal server error"}), 500
 
     @app.route("/api/refresh-status", methods=["GET"])
     def api_refresh_status():
@@ -790,8 +798,9 @@ def create_app() -> Flask:
         try:
             from vulnova.core.refresh import get_refresh_status
             return jsonify(get_refresh_status())
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        except Exception:
+            logger.exception("Unhandled error in /api/refresh-status")
+            return jsonify({"error": "Internal server error"}), 500
 
     # Optional in-process auto-refresh scheduler. Enable by setting
     # VULNOVA_REFRESH_HOURS (e.g. 6) or launching `vulnova web --refresh-hours 6`.
