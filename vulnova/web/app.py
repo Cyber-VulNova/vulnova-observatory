@@ -2,8 +2,7 @@
 
 Provides a browser-based CVE data table sourced from the NVD API v2 and the
 CISA KEV catalog, enriched with EPSS scores, product/vendor identification,
-public-exploit status, and a deterministic triage priority score. Also serves
-the VulNova Pulse cyber-news feed.
+and public-exploit status. Also serves the VulNova Pulse cyber-news feed.
 """
 
 import logging
@@ -21,7 +20,7 @@ from vulnova.core.config import Config
 from vulnova.core.cpe_match import parse_cpe
 from vulnova.core.cvss import parse_vector
 from vulnova.core.cwe_data import lookup_cwe
-from vulnova.core.triage import compute_triage_score
+from vulnova.core.tracking import TrackingStore
 from vulnova.sources.epss import EPSSClient
 from vulnova.sources.exploitdb import ExploitDBClient
 from vulnova.sources.advisories import ALL_SOURCES, fetch_all_advisories
@@ -273,7 +272,7 @@ SOURCE_CATALOG = [
     {
         "key": "epss", "name": "EPSS (FIRST.org)", "category": "Risk Scoring",
         "namespace": "epss",
-        "purpose": "Exploit Prediction Scoring System — probability a CVE will be exploited in the next 30 days. Feeds the triage score and the EPSS trend sparkline.",
+        "purpose": "Exploit Prediction Scoring System — probability a CVE will be exploited in the next 30 days. Shown on each CVE with an EPSS trend sparkline.",
         "check_url": "https://api.first.org/data/v1/epss?cve=CVE-2021-44228",
         "doc_url": "https://www.first.org/epss/",
         "refresh_note": "Scores cached ~12 h; history ~12 h.",
@@ -666,18 +665,6 @@ def create_app() -> Flask:
             msf = MetasploitClient(config=config, cache=cache).search(cve.cve_id)
             vulhub = VulhubClient(cache=cache).search(cve.cve_id)
 
-            triage = compute_triage_score(
-                cve_id=cve.cve_id,
-                cvss_base=cve.base_score,
-                epss_probability=epss_prob,
-                in_kev=in_kev,
-                has_exploitdb=len(edb) > 0,
-                has_github_poc=len(pocs) > 0,
-                has_metasploit=len(msf) > 0,
-                has_nuclei=len(nuclei) > 0,
-                has_vulhub=len(vulhub) > 0,
-            )
-
             exploits = []
             for e in edb[:6]:
                 exploits.append({"source": "ExploitDB", "name": e.title[:80],
@@ -808,9 +795,6 @@ def create_app() -> Flask:
                 "in_kev": in_kev,
                 "kev_details": kev_entry.to_dict() if kev_entry else None,
                 "cve_tags": cve.cve_tags,
-                "triage_score": triage.total_score,
-                "triage_label": triage.severity_label,
-                "recommendation": triage.recommendation,
                 "weaknesses": cve.weaknesses,
                 "cwe_details": cwe_details,
                 "product": product,
@@ -835,6 +819,63 @@ def create_app() -> Flask:
             return jsonify(get_refresh_status())
         except Exception:
             logger.exception("Unhandled error in /api/refresh-status")
+            return jsonify({"error": "Internal server error"}), 500
+
+    # ─── Orbit — CVE tracking / watchlist ─────────────────────────────
+
+    @app.route("/orbit")
+    def orbit_page():
+        """Orbit — the CVE watchlist/tracker page."""
+        return render_template("orbit.html")
+
+    @app.route("/api/tracking", methods=["GET"])
+    def api_tracking_list():
+        """List all tracked CVEs."""
+        try:
+            items = TrackingStore().list_all()
+            return jsonify({"items": items, "total": len(items)})
+        except Exception:
+            logger.exception("Failed to list tracked CVEs")
+            return jsonify({"error": "Internal server error"}), 500
+
+    @app.route("/api/tracking", methods=["POST"])
+    def api_tracking_add():
+        """Add a CVE to the tracker."""
+        try:
+            data = request.get_json(silent=True) or {}
+            if not (data.get("cve_id") or "").strip():
+                return jsonify({"error": "cve_id is required"}), 400
+            item = TrackingStore().add(data)
+            return jsonify(item), 201
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception:
+            logger.exception("Failed to add tracked CVE")
+            return jsonify({"error": "Internal server error"}), 500
+
+    @app.route("/api/tracking/<int:item_id>", methods=["PATCH", "PUT"])
+    def api_tracking_update(item_id):
+        """Update a tracked CVE."""
+        try:
+            data = request.get_json(silent=True) or {}
+            item = TrackingStore().update(item_id, data)
+            if item is None:
+                return jsonify({"error": "Not found"}), 404
+            return jsonify(item)
+        except Exception:
+            logger.exception("Failed to update tracked CVE")
+            return jsonify({"error": "Internal server error"}), 500
+
+    @app.route("/api/tracking/<int:item_id>", methods=["DELETE"])
+    def api_tracking_delete(item_id):
+        """Remove a tracked CVE."""
+        try:
+            ok = TrackingStore().delete(item_id)
+            if not ok:
+                return jsonify({"error": "Not found"}), 404
+            return jsonify({"deleted": item_id})
+        except Exception:
+            logger.exception("Failed to delete tracked CVE")
             return jsonify({"error": "Internal server error"}), 500
 
     # Optional in-process auto-refresh scheduler. Enable by setting
@@ -879,10 +920,6 @@ def _recent_feed(page, size, keyword, severity, days_back,
         has_edb = exploitdb.has_exploit(cve.cve_id) if edb_ready else False
         ransomware = kev_entry.known_ransomware_use if kev_entry else ""
 
-        triage = compute_triage_score(
-            cve_id=cve.cve_id, cvss_base=cve.base_score,
-            epss_probability=epss_prob, in_kev=in_kev, has_exploitdb=has_edb,
-        )
         product = _derive_product(cve.cpes, cve.description, cve.affected_products)
 
         rows.append({
@@ -897,8 +934,6 @@ def _recent_feed(page, size, keyword, severity, days_back,
             "in_kev": in_kev,
             "kev_date_added": kev_entry.date_added if kev_entry else "",
             "kev_ransomware": ransomware,
-            "triage_score": triage.total_score,
-            "triage_label": triage.severity_label,
             "product": product,
             "exploit_status": _exploit_status(in_kev, ransomware, epss_prob, has_edb),
             "weaknesses": cve.weaknesses,
@@ -941,10 +976,6 @@ def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb
         epss_prob = epss.epss if epss else 0.0
         has_edb = exploitdb.has_exploit(e.cve_id) if edb_ready else False
 
-        triage = compute_triage_score(
-            cve_id=e.cve_id, cvss_base=0.0,
-            epss_probability=epss_prob, in_kev=True, has_exploitdb=has_edb,
-        )
         vendor, product = _prettify(e.vendor), _prettify(e.product)
         label = f"{vendor} / {product}" if product else vendor
 
@@ -960,8 +991,6 @@ def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb
             "in_kev": True,
             "kev_date_added": e.date_added,
             "kev_ransomware": e.known_ransomware_use,
-            "triage_score": triage.total_score,
-            "triage_label": triage.severity_label,
             "product": {"vendor": vendor, "product": product, "label": label, "more": 0},
             "exploit_status": _exploit_status(True, e.known_ransomware_use, epss_prob, has_edb),
             "weaknesses": [],

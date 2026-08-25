@@ -1,6 +1,6 @@
 // ─── VulNova CVE Table ─────────────────────────────────────────────────
 
-const COLSPAN = 14;
+const COLSPAN = 13;
 
 const EXPLOIT_RANK = {
     weaponized: 5, public: 4, likely: 3, elevated: 2, none: 1, "": 0,
@@ -290,7 +290,6 @@ function render() {
 }
 
 function renderRow(r) {
-    const sev = (r.triage_label || 'INFO').toLowerCase();
     const cvssSev = (r.severity || 'NONE').toLowerCase();
     const isExpanded = state.expanded.has(r.cve_id);
     const cwe = (r.weaknesses && r.weaknesses.length) ? r.weaknesses[0] : '—';
@@ -326,7 +325,6 @@ function renderRow(r) {
             <button data-cve="${r.cve_id}" class="expand-btn" title="Details">${isExpanded ? '▼' : '▶'}</button>
         </td>
         <td class="cell-cve"><a class="mono cve-link" href="/cve/${r.cve_id}" target="_blank" rel="noopener" title="Open full CVE page">${r.cve_id}</a>${(r.cve_tags && r.cve_tags.some(t => /disput/i.test(t))) ? ' <span class="disputed-flag" title="Disputed by vendor">⚑</span>' : ''}</td>
-        <td><span class="triage-chip triage-${sev}">${r.triage_score}</span></td>
         <td><span class="exp-badge exp-${es.level}" title="${escapeHtml(es.detail)}">${escapeHtml(es.label)}</span></td>
         <td>${cvssCell}</td>
         <td>${r.severity ? `<span class="sev-badge sev-${cvssSev}">${r.severity}</span>` : '<span class="sev-badge sev-none">—</span>'}</td>
@@ -457,13 +455,11 @@ function renderDetail(d) {
             <div class="detail-desc">${escapeHtml(d.description)}</div>
             ${fixedLine}
             ${kevBlock}
-            <div class="detail-rec"><strong>Recommendation:</strong> ${escapeHtml(d.recommendation)}</div>
             ${exploitsBlock}
             ${cpes ? `<div class="detail-block"><div class="detail-label">🎯 Affected (CPE)</div>${cpes}</div>` : ''}
             ${refsBlock ? `<div class="detail-block"><div class="detail-label">🔗 References</div>${refsBlock}</div>` : ''}
         </div>
         <div class="detail-side">
-            <div class="side-metric"><div class="side-label">Triage</div><div class="side-value triage-${d.triage_label.toLowerCase()}">${d.triage_score}/100</div></div>
             <div class="side-metric"><div class="side-label">CVSS</div><div class="side-value">${d.cvss_score} (${d.severity || 'N/A'})</div></div>
             <div class="side-metric"><div class="side-label">EPSS</div><div class="side-value">${d.epss_percent}%</div></div>
             <div class="side-metric"><div class="side-label">Vector</div><div class="side-value mono-xs">${escapeHtml(d.vector || 'N/A')}</div></div>

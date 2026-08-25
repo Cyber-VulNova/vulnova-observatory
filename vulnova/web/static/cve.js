@@ -32,8 +32,8 @@ async function loadCve(cveId, root) {
 }
 
 function renderPage(d) {
-    const sev = (d.triage_label || 'INFO').toLowerCase();
     const cvssSev = (d.severity || 'NONE').toLowerCase();
+    const heroSev = ['critical', 'high', 'medium', 'low'].includes(cvssSev) ? cvssSev : 'info';
 
     const kevBadge = d.in_kev ? '<span class="badge badge-kev">🔥 CISA KEV</span>' : '';
     const ransom = d.kev_details && (d.kev_details.known_ransomware_use || '').toLowerCase() === 'known'
@@ -49,21 +49,21 @@ function renderPage(d) {
         <div class="cve-hero-left">
             <div class="cve-hero-id">${escapeHtml(d.cve_id)}</div>
             <div class="cve-hero-badges">
-                <span class="badge badge-${sev}">${d.triage_label}</span>
                 ${d.severity ? `<span class="sev-badge sev-${cvssSev}">${d.severity}</span>` : ''}
                 ${kevBadge}${ransom}${tags}
             </div>
             ${product}
+            <a class="btn btn-primary btn-track" href="/orbit?cve=${encodeURIComponent(d.cve_id)}" title="Add this CVE to your tracker">＋ Track this CVE</a>
         </div>
         <div class="cve-hero-score">
-            <div class="score-circle score-${sev}">${d.triage_score}</div>
-            <div class="score-cap">Triage / 100</div>
+            <div class="score-circle score-${heroSev}">${d.epss_percent}%</div>
+            <div class="score-cap">EPSS</div>
         </div>
     </div>
 
     <div class="cve-metrics">
         ${metricCard('CVSS', d.cvss_score ? `${d.cvss_score}` : 'N/A', d.severity || '')}
-        ${metricCard('EPSS', `${d.epss_percent}%`, 'exploitation probability')}
+        ${metricCard('EPSS', `${d.epss_percent}%`, 'exploitation probability (next 30 days)')}
         ${metricCard('CISA KEV', d.in_kev ? 'Listed' : 'Not listed', d.in_kev ? 'actively exploited' : '')}
         ${metricCard('Exploits', d.exploit_count, 'public sources')}
     </div>
@@ -73,7 +73,6 @@ function renderPage(d) {
             <section class="cve-section">
                 <h2>Summary</h2>
                 <p class="cve-desc">${escapeHtml(d.description)}</p>
-                <div class="cve-rec">📋 ${escapeHtml(d.recommendation)}</div>
             </section>
 
             ${renderCvss(d)}

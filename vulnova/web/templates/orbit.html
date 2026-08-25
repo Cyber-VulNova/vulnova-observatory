@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VulNova Orbit — CVE Tracking</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <a href="/" class="brand-logo"><img src="{{ url_for('static', filename='vulnova-logo.svg') }}" alt="VulNova" class="brand-img"></a>
+            <span class="brand-sub">Observatory</span>
+            <nav class="topnav">
+                <a href="/" class="topnav-link">Atlas · CVEs</a>
+                <a href="/news" class="topnav-link">Pulse · News</a>
+                <a href="/flare" class="topnav-link">Flare · Advisories</a>
+                <a href="/sources" class="topnav-link">Signal · Sources</a>
+                <a href="/orbit" class="topnav-link active">Orbit · Tracking</a>
+            </nav>
+        </div>
+        <div class="topbar-stats">
+            <span class="stat-pill" id="orbit-stat">— tracked</span>
+        </div>
+    </header>
+
+    <main class="orbit-page">
+        <div class="atlas-intro" style="padding-left:0">
+            <span class="atlas-title">Orbit</span>
+            <span class="atlas-tag">Track the CVEs you're remediating — assets affected, timelines, notes, and status. Stored locally on this instance.</span>
+        </div>
+
+        <form id="track-form" class="orbit-form" autocomplete="off">
+            <input type="hidden" id="edit-id" value="">
+            <div class="orbit-form-grid">
+                <div class="orbit-field">
+                    <label for="f-cve">CVE ID <span class="req">*</span></label>
+                    <input type="text" id="f-cve" placeholder="CVE-2024-3094" required>
+                </div>
+                <div class="orbit-field">
+                    <label for="f-assets">Assets affected</label>
+                    <input type="number" id="f-assets" min="0" value="0">
+                </div>
+                <div class="orbit-field">
+                    <label for="f-start">Start date</label>
+                    <input type="date" id="f-start">
+                </div>
+                <div class="orbit-field">
+                    <label for="f-due">Due date</label>
+                    <input type="date" id="f-due">
+                </div>
+                <div class="orbit-field">
+                    <label for="f-status">Status</label>
+                    <select id="f-status">
+                        <option value="open">Open</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                </div>
+            </div>
+            <div class="orbit-field orbit-field-notes">
+                <label for="f-notes">Notes</label>
+                <textarea id="f-notes" rows="5" placeholder="Remediation notes, owners, affected systems, ticket links…"></textarea>
+            </div>
+            <div class="orbit-form-actions">
+                <button type="submit" class="btn btn-primary" id="track-submit">＋ Track CVE</button>
+                <button type="button" class="btn btn-ghost" id="track-cancel" style="display:none">Cancel edit</button>
+                <span class="orbit-form-msg" id="track-msg"></span>
+            </div>
+        </form>
+
+        <div id="orbit-list" class="orbit-list">
+            <div class="table-loading"><div class="spinner"></div><div>Loading tracked CVEs…</div></div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='orbit.js') }}"></script>
+</body>
+</html>

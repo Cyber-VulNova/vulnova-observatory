@@ -1392,3 +1392,77 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .sev-medium { background: var(--warning); color: #1a1a2e; }
 .sev-low { background: var(--success); color: #fff; }
 .sev-unknown { background: var(--text-dim); color: #fff; }
+
+/* ─── Orbit — CVE Tracking ─────────────────────────────────────────────── */
+
+.orbit-page { max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; width: 100%; }
+
+.btn-track { margin-top: 12px; }
+
+.orbit-form {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg-elevated, rgba(255,255,255,0.03));
+    padding: 20px;
+    margin-bottom: 26px;
+}
+.orbit-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 14px;
+}
+.orbit-field { display: flex; flex-direction: column; gap: 6px; }
+.orbit-field label {
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.03em;
+}
+.orbit-field .req { color: var(--danger); }
+.orbit-field input, .orbit-field select, .orbit-field textarea {
+    background: var(--bg, #14141c);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 9px 11px;
+    font-size: 14px;
+    font-family: inherit;
+    width: 100%;
+}
+.orbit-field input:focus, .orbit-field select:focus, .orbit-field textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+.orbit-field-notes { margin-bottom: 14px; }
+.orbit-field-notes textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+
+.orbit-form-actions { display: flex; align-items: center; gap: 12px; }
+.orbit-form-msg { font-size: 13px; }
+.orbit-form-msg.is-error { color: var(--danger); }
+.orbit-form-msg.is-ok { color: var(--success); }
+
+.orbit-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.orbit-table thead th {
+    text-align: left;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-dim);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+.orbit-table tbody td { padding: 11px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.orbit-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+.orbit-notes { color: var(--text-secondary); }
+.orbit-dim { color: var(--text-dim); }
+.orbit-actions { white-space: nowrap; text-align: right; }
+.orbit-del:hover { color: var(--danger); border-color: var(--danger); }
+
+.orbit-status {
+    display: inline-block; padding: 2px 9px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+}
+.orbit-status.st-open { background: rgba(52,152,219,0.18); color: #5dade2; }
+.orbit-status.st-in_progress { background: rgba(243,156,18,0.18); color: var(--warning); }
+.orbit-status.st-resolved { background: rgba(46,204,113,0.18); color: var(--success); }
+
+.orbit-due-over { color: var(--danger); font-weight: 600; }
+.orbit-due-soon { color: var(--warning); font-weight: 600; }
+.orbit-due-ok { color: var(--text-secondary); }

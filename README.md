@@ -4,7 +4,7 @@
 
 # VulNova Observatory
 
-**The threat-intelligence portal that extends the VulNova CETM platform — a CLI and web dashboard for CVE tracking, risk triage, exploit discovery, and cyber news.**
+**The threat-intelligence portal that extends the VulNova CETM platform — a CLI and web dashboard for CVE tracking, exploit discovery, and cyber news.**
 
 VulNova Observatory is the intelligence module of VulNova. You observe the
 threat landscape through four instruments:
@@ -26,7 +26,6 @@ $ vulnova lookup CVE-2024-3094
  │   CVSS:          10.0 (CRITICAL)                    │
  │   EPSS:          93.2%                              │
  │   CISA KEV:      YES - Actively Exploited           │
- │   Triage Score:  97/100 (CRITICAL)                  │
  │                                                      │
  │ Recommendation: IMMEDIATE ACTION...                  │
  ╰──────────────────────────────────────────────────────╯
@@ -45,7 +44,7 @@ $ vulnova lookup CVE-2024-3094
 | **Signal** | Live connection-health board for every data source |
 | **Entity Tagging** | News articles auto-tagged with CVEs, agencies (CISA…), products, countries, and threat keywords — click to filter |
 | **CVE Lookup (CLI)** | Search by CVE ID, component name+version, or CPE string |
-| **Risk Triage** | Deterministic 0-100 priority score: KEV + EPSS + CVSS + exploit maturity |
+| **CVE Tracking** | Watchlist of CVEs you're remediating — assets affected, start/due dates, notes, and status |
 | **Exploit Intel** | Exploit-DB (local CSV), GitHub PoCs, Nuclei templates, Metasploit modules, and Vulhub environments |
 | **CISA KEV** | Known Exploited Vulnerabilities catalog — #1 triage signal |
 | **EPSS Score** | Exploit prediction probability (FIRST.org) |
@@ -132,15 +131,15 @@ The dashboard has four pages, switchable from the top navigation.
 ### Atlas — CVE Catalog
 
 A live table of CVEs pulled from the NVD API v2, newest published first, each
-row enriched with EPSS, CISA KEV status, and the VulNova triage score.
+row enriched with EPSS and CISA KEV status.
 
 - **Filters:** time window (last 7 / 30 / 90 / 120 days, or all time), CVSS
-  severity, "KEV only" toggle, and keyword search
-- **Columns:** CVE ID, Triage score, CVSS, Severity, EPSS, KEV, Description,
-  Published date, CWE, and a link to the NVD detail page
-- **Sortable** by triage, CVSS, EPSS, or published date
-- **Row expander** shows the full description, KEV action, recommendation,
-  affected CPEs, and references
+  severity, and keyword search
+- **Columns:** CVE ID, Exploit status, CVSS, Severity, EPSS, KEV, Product,
+  Description, Published date, CWE, and a link to the NVD detail page
+- **Sortable** by CVSS, EPSS, or published date
+- **Row expander** shows the full description, KEV action, affected CPEs, and
+  references
 - Pagination with total match count; results cached in SQLite
 
 ### Pulse — Cyber News Feed
@@ -204,6 +203,21 @@ what each source is used for. Grouped by category with a one-click re-check.
 When auto-refresh is enabled, Signal also shows a banner with the interval, the
 **last refresh** time, and the **next refresh** time.
 
+### Orbit — CVE Tracking
+
+A lightweight watchlist for the CVEs you're actively remediating. Add an entry
+with the **CVE ID**, **number of assets affected**, **start** and **due**
+dates, a **status** (open / in progress / resolved), and free-form **notes**,
+then track progress from one place.
+
+- **Track this CVE** button on every CVE page prefills the form.
+- Due dates are color-coded (overdue / due soon), and each row links back to
+  the full CVE page.
+- Edit or delete any entry inline.
+- Tracked items are stored **locally** on the instance (`~/.vulnova/tracking.db`)
+  — they are never synced to the repository, and each deployment keeps its own
+  list.
+
 ---
 
 ## Automatic Refresh
@@ -258,29 +272,6 @@ vulnova -o json lookup CVE-2023-44487         # JSON (pipe to jq, scripts)
 vulnova -o csv lookup "apache httpd 2.4.49"   # CSV
 vulnova -o silent lookup CVE-2023-44487       # silent (exit code only)
 ```
-
----
-
-## Risk Triage Scoring
-
-VulNova produces a deterministic **0-100 priority score** for every CVE:
-
-| Component | Weight | Signal |
-|-----------|--------|--------|
-| CISA KEV | 35 pts | Is it actively exploited in the wild? |
-| EPSS | 25 pts | What's the probability of exploitation? |
-| CVSS | 25 pts | How severe is the base vulnerability? |
-| Exploit Maturity | 15 pts | Are public exploits/PoCs available? |
-
-### Severity Labels
-
-| Score | Label | Action |
-|-------|-------|--------|
-| 80-100 | CRITICAL | Immediate patching required |
-| 60-79 | HIGH | Prioritize patching this week |
-| 40-59 | MEDIUM | Plan for next maintenance window |
-| 20-39 | LOW | Regular patching cycle |
-| 0-19 | INFO | Monitor for changes |
 
 ---
 
@@ -391,6 +382,7 @@ vulnova/
 │   ├── cpe_match.py       # Smart CPE matching (rapidfuzz)
 │   ├── cvss.py            # CVSS parsing / scoring helpers
 │   ├── tagger.py          # News entity tagger (CVE/agency/product/country/keyword)
+│   ├── tracking.py        # Orbit CVE watchlist store (persistent SQLite)
 │   └── output.py          # Output formatting (Rich)
 ├── sources/
 │   ├── nvd.py             # NVD API v2
@@ -405,9 +397,9 @@ vulnova/
 │   ├── ghsa.py            # GitHub Advisory Database (Flare)
 │   └── advisories.py      # Flare multi-source aggregator (GHSA + Ubuntu + Red Hat + MSRC + Palo Alto + VMware + OSV)
 └── web/
-    ├── app.py             # Flask app (Atlas / Pulse / Flare / Signal routes + APIs)
-    ├── templates/         # index.html (Atlas), news.html (Pulse), flare.html, sources.html (Signal), cve.html
-    └── static/            # style.css, app.js, news.js, flare.js, cve.js, sources.js
+    ├── app.py             # Flask app (Atlas / Pulse / Flare / Signal / Orbit routes + APIs)
+    ├── templates/         # index.html (Atlas), news.html (Pulse), flare.html, sources.html (Signal), orbit.html, cve.html
+    └── static/            # style.css, app.js, news.js, flare.js, cve.js, sources.js, orbit.js
 ```
 
 ---
