@@ -355,6 +355,14 @@ SOURCE_CATALOG = [
         "refresh_note": "Full catalog cached ~6 h.",
     },
     {
+        "key": "rssfeeds", "name": "CERT & Vendor Advisories (RSS)", "category": "Advisories",
+        "namespace": "adv_rss",
+        "purpose": "Government-CERT and vendor-PSIRT advisory feeds (Cisco, Fortinet, CERT-FR, JPCERT/CC, Debian). Surfaced on the Flare page alongside GHSA/OSV/vendor sources.",
+        "check_url": "https://filestore.fortinet.com/fortiguard/rss/ir.xml",
+        "doc_url": "https://www.cert.ssi.gouv.fr/avis/",
+        "refresh_note": "Each feed cached ~1 h.",
+    },
+    {
         "key": "exploitdb", "name": "Exploit-DB (local CSV)", "category": "Exploitation Intel",
         "namespace": None, "local": True,
         "purpose": "Archive of public exploits, matched by CVE ID. Downloaded once from GitLab and indexed locally for fast, offline lookups.",

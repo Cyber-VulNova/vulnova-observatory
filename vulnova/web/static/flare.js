@@ -18,9 +18,15 @@ const SOURCE_ABBR = {
     "Microsoft": "MSRC",
     "VMware": "VMware",
     "OSV": "OSV",
+    "Cisco": "Cisco",
+    "Fortinet": "Fortinet",
+    "CERT-FR": "CERT-FR",
+    "JPCERT/CC": "JPCERT",
+    "Debian": "Debian",
 };
 
-// Display name → API source key (for focused fetching)
+// Display name → API source key (for focused fetching). The CERT/vendor RSS
+// feeds all share the "rssfeeds" key; the client then filters by source name.
 const SOURCE_KEY = {
     "GitHub Advisory Database": "github",
     "Ubuntu Security Notices": "ubuntu",
@@ -29,6 +35,11 @@ const SOURCE_KEY = {
     "Microsoft": "microsoft",
     "VMware": "vmware",
     "OSV": "osv",
+    "Cisco": "rssfeeds",
+    "Fortinet": "rssfeeds",
+    "CERT-FR": "rssfeeds",
+    "JPCERT/CC": "rssfeeds",
+    "Debian": "rssfeeds",
 };
 
 document.addEventListener('DOMContentLoaded', () => {

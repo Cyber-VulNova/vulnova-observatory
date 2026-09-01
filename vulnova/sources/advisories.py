@@ -495,6 +495,92 @@ def _rss_date(entry) -> str:
     return raw[:10] if raw else ""
 
 
+# ── Generic RSS advisory feeds (government CERTs + vendor PSIRTs) ────────────
+# Each entry: (display source, ecosystem label, RSS/Atom URL, default severity).
+# The client extracts a CVE id from the title/summary when present (many CERT
+# advisories have none — which is fine, Flare embraces no-CVE items). Feeds that
+# are dead/empty simply contribute nothing.
+_RSS_ADVISORY_FEEDS = [
+    ("Cisco", "Cisco", "https://sec.cloudapps.cisco.com/security/center/psirtrss20/CiscoSecurityAdvisory.xml"),
+    ("Fortinet", "Fortinet", "https://filestore.fortinet.com/fortiguard/rss/ir.xml"),
+    ("CERT-FR", "CERT-FR", "https://www.cert.ssi.gouv.fr/avis/feed/"),
+    ("JPCERT/CC", "JPCERT", "https://www.jpcert.or.jp/rss/jpcert.rdf"),
+    ("Debian", "Debian", "https://www.debian.org/security/dsa"),
+]
+
+_SEV_WORD_RE = re.compile(r"\b(critical|high|medium|moderate|important|low)\b", re.IGNORECASE)
+
+
+class RSSAdvisoryClient:
+    """Ingests a curated list of vendor-PSIRT / government-CERT RSS feeds.
+
+    One small, resilient client instead of a bespoke parser per source: each
+    feed yields normalized ``Advisory`` objects tagged with its own source and
+    ecosystem label, so cards render and filter correctly on Flare. Free, no key.
+    """
+
+    NAMESPACE = "adv_rss"
+
+    def __init__(self, cache: Optional[Cache] = None):
+        self.cache = cache
+
+    def fetch(self, per_feed: int = 30, force: bool = False) -> list[Advisory]:
+        key = f"rss:{per_feed}"
+        if self.cache and not force:
+            cached = self.cache.get(self.NAMESPACE, key)
+            if cached is not None:
+                return [Advisory.from_dict(x) for x in cached]
+
+        out: list[Advisory] = []
+        for source, eco, url in _RSS_ADVISORY_FEEDS:
+            try:
+                out.extend(self._fetch_one(source, eco, url, per_feed))
+            except Exception:
+                continue  # a dead/blocked feed must not break the rest
+
+        if self.cache and out:
+            self.cache.set(self.NAMESPACE, key, [a.to_dict() for a in out], ttl=3600)
+        return out
+
+    def _fetch_one(self, source: str, eco: str, url: str, limit: int) -> list[Advisory]:
+        resp = httpx.get(url, headers=UA, timeout=25.0, follow_redirects=True)
+        resp.raise_for_status()
+        parsed = feedparser.parse(resp.content)
+
+        items: list[Advisory] = []
+        for e in parsed.entries[:limit]:
+            title = e.get("title", "") or ""
+            link = e.get("link", "") or ""
+            summary = re.sub(r"<[^>]+>", "", e.get("summary", "") or "").strip()
+            haystack = f"{title} {summary} {link}"
+            cve_m = _CVE_RE.search(haystack)
+            cve = cve_m.group(0).upper() if cve_m else ""
+
+            sev = "unknown"
+            sm = _SEV_WORD_RE.search(title) or _SEV_WORD_RE.search(summary)
+            if sm:
+                w = sm.group(1).lower()
+                sev = {"moderate": "medium", "important": "high"}.get(w, w)
+
+            items.append(Advisory(
+                advisory_id=(e.get("id", "") or link or cve),
+                cve_id=cve,
+                summary=(title or summary)[:300],
+                severity=sev if sev in ("low", "medium", "high", "critical") else "unknown",
+                cvss_score=0.0,
+                published=_rss_date(e),
+                updated=_rss_date(e),
+                url=link,
+                source=source,
+                ecosystems=[eco],
+                packages=[],
+                cwes=[],
+                references=[],
+                type="reviewed",
+            ))
+        return items
+
+
 # Registry of non-GHSA source fetchers
 def _ubuntu(cache, limit, force):
     return UbuntuUSNClient(cache=cache).fetch(limit=limit, force=force)
@@ -516,12 +602,20 @@ def _osv(cache, per_eco, force):
     return OSVClient(cache=cache).fetch(per_eco=per_eco, force=force)
 
 
+def _rssfeeds(cache, per_feed, force):
+    return RSSAdvisoryClient(cache=cache).fetch(per_feed=per_feed, force=force)
+
+
 VENDOR_SOURCES = {
     "ubuntu": "Ubuntu Security Notices",
     "redhat": "Red Hat",
     "paloalto": "Palo Alto Networks",
     "microsoft": "Microsoft",
     "vmware": "VMware",
+    # Bundle of government-CERT + vendor-PSIRT RSS feeds (Cisco, Fortinet,
+    # CERT-FR, JPCERT, Debian). Each advisory keeps its own source name for
+    # display/filtering.
+    "rssfeeds": "CERT & Vendor Advisories (RSS)",
 }
 
 # Open-source ecosystem aggregators — the no-CVE-heavy sources.
@@ -586,6 +680,11 @@ def fetch_all_advisories(
     if "osv" in selected:
         try:
             merged.extend(_osv(cache, 60, force))
+        except Exception:
+            pass
+    if "rssfeeds" in selected:
+        try:
+            merged.extend(_rssfeeds(cache, 30, force))
         except Exception:
             pass
 

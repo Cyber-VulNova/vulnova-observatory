@@ -7,11 +7,14 @@
 **The threat-intelligence portal that extends the VulNova CETM platform — a CLI and web dashboard for CVE tracking, exploit discovery, and cyber news.**
 
 VulNova Observatory is the intelligence module of VulNova. You observe the
-threat landscape through four instruments:
+threat landscape through a set of instruments:
 
-- **Atlas** — the complete CVE catalog (NVD)
-- **Pulse** — the live cyber-news feed (14 sources)
-- **Flare** — vendor/GHSA advisories, including those with no CVE assigned
+- **Atlas** — the complete CVE catalog (NVD), with a rich per-CVE intelligence page
+- **Pulse** — the live cyber-news feed (19 sources)
+- **Flare** — vendor / GHSA / CERT advisories, including those with no CVE assigned
+- **ATT&CK** — the MITRE ATT&CK® Enterprise tactics/techniques matrix
+- **EPSS** — exploitation-probability ranking with an explainable risk score
+- **Orbit** — a CVE remediation watchlist
 - **Signal** — data-source connection health
 
 Use the command line for fast lookups and automation, or the web dashboard to
@@ -37,10 +40,15 @@ $ vulnova lookup CVE-2024-3094
 
 | Feature | Description |
 |---------|-------------|
-| **Web Dashboard** | Browser UI with four instruments — Atlas, Pulse, Flare, and Signal (`vulnova web`) |
-| **Atlas** | Newest-first CVE catalog from NVD with time-window, severity, KEV, keyword filters, sorting, expandable detail, and a force-refresh button |
-| **Pulse** | Live cyber-news feed aggregating 14 security sources (RSS/Atom) |
-| **Flare** | Vendor + open-source advisories (GHSA, OSV, Ubuntu, Red Hat, MSRC, Palo Alto, VMware), including those with **no CVE assigned** |
+| **Web Dashboard** | Browser UI with instruments — Atlas, Pulse, Flare, ATT&CK, EPSS, Orbit, and Signal (`vulnova web`) |
+| **Atlas** | Newest-first CVE catalog from NVD with time-window, severity, KEV, keyword and CVSS-vector filters, sorting, expandable detail, and a force-refresh button |
+| **CVE page** | A full-width per-CVE intelligence page: risk radar, CVSS breakdown, exploits/PoCs, remediation, weaknesses (CWE/CAPEC), **ATT&CK techniques**, **ransomware groups**, EPSS trend, related CVEs, and references |
+| **Pulse** | Live cyber-news feed aggregating 19 security sources (RSS/Atom) |
+| **Flare** | Vendor + open-source + CERT advisories (GHSA, OSV, Ubuntu, Red Hat, MSRC, Palo Alto, VMware, Cisco, Fortinet, CERT-FR, JPCERT/CC, Debian), including those with **no CVE assigned** |
+| **ATT&CK** | Browsable/searchable MITRE ATT&CK Enterprise matrix (tactics × techniques), cached from MITRE STIX |
+| **EPSS Prediction** | CVEs ranked by exploitation probability, band stats, and an explainable VulNova exploitation-risk score (EPSS + KEV + percentile + CVSS) |
+| **Ransomware linkage** | Ransomware groups mapped to the CVEs they exploit (Ransomware.live Pro API), shown on the CVE page |
+| **Orbit** | CVE remediation watchlist — assets affected, start/due dates, notes, and status |
 | **Signal** | Live connection-health board for every data source |
 | **Entity Tagging** | News articles auto-tagged with CVEs, agencies (CISA…), products, countries, and threat keywords — click to filter |
 | **CVE Lookup (CLI)** | Search by CVE ID, component name+version, or CPE string |
@@ -71,7 +79,16 @@ not install it, run everything through the module form instead:
 ### Requirements
 
 - Python 3.10+
-- No API keys required — every data source works key-free
+- **No API keys required** — the baseline works fully key-free and offline-friendly.
+- **Optional keys** unlock higher rate limits and richer data. Copy `.env.example`
+  to `.env` and fill in any you have (all optional):
+  - `NVD_API_KEY` — higher NVD rate limits (also enables KEV CVSS enrichment)
+  - `CVEFEED_API_KEY` — CVEfeed.io remediation / SSVC enrichment
+  - `RANSOMWARE_LIVE_API_KEY` — ransomware-group → CVE links on the CVE page
+  - `GITHUB_TOKEN` — higher GitHub API limits for PoC/advisory lookups
+
+  The `.env` file is gitignored; keys can also be supplied as real environment
+  variables on your host.
 
 ---
 
@@ -134,17 +151,19 @@ A live table of CVEs pulled from the NVD API v2, newest published first, each
 row enriched with EPSS and CISA KEV status.
 
 - **Filters:** time window (last 7 / 30 / 90 / 120 days, or all time), CVSS
-  severity, and keyword search
-- **Columns:** CVE ID, Exploit status, CVSS, Severity, EPSS, KEV, Product,
-  Description, Published date, CWE, and a link to the NVD detail page
-- **Sortable** by CVSS, EPSS, or published date
-- **Row expander** shows the full description, KEV action, affected CPEs, and
-  references
+  severity, keyword search, and CVSS-vector search — all from one smart search bar
+- **Quick-filter pills:** CISA KEV, ransomware-linked, first-seen-this-week,
+  critical (CVSS ≥ 9), high-EPSS (≥ 50%)
+- **Columns:** CVE ID, Exploit status, RCE, CVSS, Severity, EPSS, KEV, Product,
+  Description, Published, Updated, CWE, and a link to the NVD detail page
+- **Sortable** by any column (CVSS, EPSS, severity, exploit status, KEV, …)
+- **Row expander** shows description, KEV action, exploits, affected CPEs, and
+  references — or open the full per-CVE page
 - Pagination with total match count; results cached in SQLite
 
 ### Pulse — Cyber News Feed
 
-A live threat-intelligence feed aggregating RSS/Atom feeds from 14 security
+A live threat-intelligence feed aggregating RSS/Atom feeds from 19 security
 sources, refreshed every 15 minutes and cached locally.
 
 - **Filter** by source, by category (News · Research · Advisories), or search
@@ -159,7 +178,7 @@ sources, refreshed every 15 minutes and cached locally.
 | Category | Sources |
 |----------|---------|
 | **News** | The Hacker News · BleepingComputer · The Register (Security) · SecurityWeek · Dark Reading · The Record · Krebs on Security |
-| **Research** | SANS Internet Storm Center · Palo Alto Unit 42 · Cisco Talos Intelligence · Rapid7 Blog · Google Project Zero |
+| **Research** | SANS Internet Storm Center · Palo Alto Unit 42 · Cisco Talos Intelligence · Rapid7 Blog · Google Project Zero · Microsoft Security Blog · ESET WeLiveSecurity · SentinelLabs · Sophos X-Ops · watchTowr Labs |
 | **Advisories** | ZDI Published Advisories · ZDI Upcoming Advisories |
 
 ### Flare — Advisories
@@ -176,6 +195,7 @@ Sources (all free, no API key):
 - **Palo Alto Networks** advisories
 - **VMware** — recent VMware vulnerabilities via NVD (Broadcom offers no clean no-key feed)
 - **OSV.dev** — open-source ecosystem advisories (crates.io/RustSec, PyPI/PYSEC, Go); the primary **no-CVE** source, since these databases carry many advisories with no CVE assigned
+- **CERT & Vendor Advisories (RSS)** — a bundle of government-CERT and vendor-PSIRT feeds: **Cisco PSIRT**, **Fortinet PSIRT**, **CERT-FR (ANSSI)**, **JPCERT/CC**, and **Debian DSA**
 
 > **Where the no-CVE advisories come from.** The vendor PSIRTs (Palo Alto,
 > Microsoft, Red Hat, VMware) are CVE Numbering Authorities — they mint their
@@ -193,6 +213,34 @@ Features:
 
 New vendor sources are pluggable: add a small client that returns the shared
 `Advisory` shape and register it — the merge, filters, and UI come for free.
+
+### ATT&CK — MITRE ATT&CK Matrix
+
+A browsable, searchable MITRE ATT&CK® Enterprise matrix (tactics × techniques).
+The dataset is downloaded once from MITRE's ATT&CK STIX repository, trimmed to a
+compact tactics/techniques index, and cached locally (`~/.vulnova/attack/`,
+refreshed ~30 days). Search by technique name or `Txxxx` id and toggle
+sub-techniques; each cell links to attack.mitre.org.
+
+The CVE page also surfaces **likely ATT&CK techniques per CVE**, derived through
+a CWE → CAPEC → ATT&CK bridge (MITRE CAPEC data). Only high-confidence,
+directly-mapped techniques are shown by default; lower-confidence (inherited)
+matches sit behind a toggle. This is a heuristic bridge, not an authoritative
+per-CVE mapping — flaws with no ATT&CK mapping (e.g. many memory-safety and
+deserialization CWEs) show an honest empty-state.
+
+### EPSS — Prediction
+
+CVEs ranked by EPSS (Exploit Prediction Scoring System) probability, with:
+
+- **Band stats** — how many CVEs sit above the high / elevated / moderate
+  probability thresholds.
+- **VulNova exploitation-risk score** — an explainable, additive 0–100 heuristic
+  that layers operational signals on top of EPSS: CISA KEV confirmation, EPSS
+  percentile, and CVSS severity. Every factor's point contribution is shown, so
+  the number is auditable. It augments EPSS; it does not replace it.
+- **Per-CVE lookup** — type a CVE id to see its EPSS, KEV status, CVSS, risk
+  breakdown, and trend.
 
 ### Signal — Source Status
 
@@ -294,7 +342,12 @@ vulnova -o silent lookup CVE-2023-44487       # silent (exit code only)
 | [Palo Alto](https://security.paloaltonetworks.com/) | Palo Alto advisories for Flare (RSS) | ~1 h cache |
 | VMware (via [NVD](https://nvd.nist.gov/)) | Recent VMware vulnerabilities for Flare | ~1 h cache |
 | [OSV.dev](https://osv.dev) | Open-source advisories (RustSec/PyPI/Go) for Flare — the no-CVE source | ~6 h cache |
-| 14 news feeds (RSS/Atom) | Cyber news for Pulse | Every 15 min |
+| Cisco · Fortinet · [CERT-FR](https://www.cert.ssi.gouv.fr/avis/) · [JPCERT/CC](https://www.jpcert.or.jp/) · Debian | CERT & vendor-PSIRT advisory RSS feeds for Flare | ~1 h cache |
+| [MITRE ATT&CK](https://attack.mitre.org/) | Enterprise tactics/techniques matrix (STIX) | ~30 d cache |
+| [MITRE CAPEC](https://capec.mitre.org/) | Attack patterns — powers the CVE → ATT&CK bridge | ~30 d cache |
+| [CVEfeed.io](https://cvefeed.io/) | Remediation guidance + SSVC on the CVE page (optional key) | ~12 h cache |
+| [Ransomware.live](https://www.ransomware.live/) | Ransomware group → CVE links (Pro API, optional key) | ~7 d index |
+| 19 news feeds (RSS/Atom) | Cyber news for Pulse | Every 15 min |
 
 ---
 
@@ -381,6 +434,8 @@ vulnova/
 │   ├── triage.py          # Risk scoring engine
 │   ├── cpe_match.py       # Smart CPE matching (rapidfuzz)
 │   ├── cvss.py            # CVSS parsing / scoring helpers
+│   ├── cwe_data.py        # Bundled CWE dictionary (name/desc/CAPEC)
+│   ├── prediction.py      # Explainable EPSS exploitation-risk heuristic
 │   ├── tagger.py          # News entity tagger (CVE/agency/product/country/keyword)
 │   ├── tracking.py        # Orbit CVE watchlist store (persistent SQLite)
 │   └── output.py          # Output formatting (Rich)
@@ -393,13 +448,17 @@ vulnova/
 │   ├── nuclei.py          # Nuclei Templates (path-based resolution)
 │   ├── metasploit.py      # Metasploit modules (offline metadata index)
 │   ├── vulhub.py          # Vulhub Docker environments
-│   ├── news.py            # Pulse news aggregator (14 RSS/Atom feeds)
+│   ├── news.py            # Pulse news aggregator (19 RSS/Atom feeds)
 │   ├── ghsa.py            # GitHub Advisory Database (Flare)
-│   └── advisories.py      # Flare multi-source aggregator (GHSA + Ubuntu + Red Hat + MSRC + Palo Alto + VMware + OSV)
+│   ├── advisories.py      # Flare aggregator (GHSA + Ubuntu + Red Hat + MSRC + Palo Alto + VMware + OSV + CERT/vendor RSS)
+│   ├── cvefeed.py         # CVEfeed.io enrichment (remediation / SSVC)
+│   ├── attack.py          # MITRE ATT&CK Enterprise matrix (STIX, cached)
+│   ├── capec.py           # CAPEC → ATT&CK bridge for CVE weakness mapping
+│   └── ransomwarelive.py  # Ransomware.live Pro API (CVE → groups index)
 └── web/
-    ├── app.py             # Flask app (Atlas / Pulse / Flare / Signal / Orbit routes + APIs)
-    ├── templates/         # index.html (Atlas), news.html (Pulse), flare.html, sources.html (Signal), orbit.html, cve.html
-    └── static/            # style.css, app.js, news.js, flare.js, cve.js, sources.js, orbit.js
+    ├── app.py             # Flask app (Atlas / Pulse / Flare / ATT&CK / EPSS / Orbit / Signal routes + APIs)
+    ├── templates/         # index.html (Atlas), news.html (Pulse), flare.html, attack.html, epss.html, orbit.html, sources.html (Signal), cve.html
+    └── static/            # style.css, theme.js, app.js, news.js, flare.js, attack.js, epss.js, cve.js, sources.js, orbit.js
 ```
 
 ---

@@ -8,14 +8,13 @@ _Last updated: 2026-08-31_
 
 ---
 
-## Open decisions (need a call before building)
+## Open decisions
 
-- [ ] **EPSS column on the Atlas table.** Note: "no value until 30 days old" is
-  a misconception — EPSS is a daily-updated probability of exploitation *in the
-  next 30 days*, valid from day one (new CVEs just tend to start low). Decide:
-  - (a) keep as-is (drives "Sort by EPSS" + the "High EPSS" preset), or
-  - (b) remove it from the Atlas table but keep the EPSS page, CVE detail, and sort/preset, or
-  - (c) keep but visually de-emphasize low values.
+- [x] **EPSS column on the Atlas table.** Resolved with **option (c)**: kept the
+  column (still drives Sort-by-EPSS + the High-EPSS preset) but visually
+  de-emphasized negligible values (< 1% dimmed, ≥ 10% highlighted). Note: "no
+  value until 30 days old" was a misconception — EPSS is a daily-updated 30-day
+  probability, valid from day one.
 
 ## Planned features (not built yet)
 
@@ -38,12 +37,19 @@ Gap analysis vs. what's already wired in. Legend: **[easy]** = free + machine-re
   Metasploit, Nuclei, Vulhub, Ransomware.live.
 
 ### Recommended first (biggest value, least effort)
-- [ ] **CISA Cybersecurity Advisories RSS** -> Flare [easy]
-- [ ] **CISA ICS Advisories RSS** -> Flare [easy]
-- [ ] **Top exploited-vendor PSIRTs** -> Flare: Cisco, Fortinet, Ivanti, Citrix,
-  F5, Apache httpd, OpenSSH [easy] (the ones that actually show in KEV/ransomware)
-- [ ] **5-8 threat-research blogs** -> Pulse: Microsoft, Mandiant, Google TAG,
-  ESET, watchTowr, SentinelLabs, Sophos X-Ops [easy] (just new entries in `news.py` SOURCES)
+- [~] **CISA Cybersecurity Advisories RSS** -> Flare — DEFERRED: the RSS endpoint
+  returns HTTP 403 to automated fetches (Cloudflare bot-block), even with a
+  browser UA. Follow-up: ingest via CISA **CSAF JSON** instead, or verify from
+  the deploy IP.
+- [~] **CISA ICS Advisories RSS** -> Flare — DEFERRED, same 403 as above.
+- [x] **Top exploited-vendor PSIRTs** -> Flare: shipped **Cisco** + **Fortinet**
+  (both live RSS). Ivanti/Citrix/F5/Apache/OpenSSH have no reliable public RSS →
+  deferred (would need HTML scraping or CSAF).
+- [x] **Threat-research blogs** -> Pulse: shipped **Microsoft Security Blog,
+  ESET, SentinelLabs, Sophos X-Ops, watchTowr**. (Mandiant RSS empty, Google TAG
+  404, Trend Micro SSL-fails → dropped.)
+- [x] **Government CERT feeds** -> Flare: shipped **CERT-FR (ANSSI)**,
+  **JPCERT/CC**, and **Debian DSA** via the new RSS advisory client.
 
 ### News / Pulse - missing
 - [ ] Threat-research blogs [easy RSS]: Microsoft Security Blog / Threat Intelligence,
@@ -77,8 +83,8 @@ Gap analysis vs. what's already wired in. Legend: **[easy]** = free + machine-re
 
 ## Small tweaks (offered, low effort)
 
-- [ ] Atlas stat pill: show "X of Y · filtered" when a search/filter is active, so the count isn't misleading.
-- [ ] Remove dead `.backlog-*` CSS left in `vulnova/web/static/style.css` from the removed Backlog page.
+- [x] Atlas stat pill: now appends active filters + "· filtered" so the count isn't misleading.
+- [x] Removed the dead `.backlog-*` CSS from `vulnova/web/static/style.css`.
 
 ## Known limitations (by design / data-driven — track, may not be "fixable")
 
@@ -100,6 +106,12 @@ Gap analysis vs. what's already wired in. Legend: **[easy]** = free + machine-re
 
 ## Recently shipped (for context)
 
+_(Legend note: `[~]` above = attempted but deferred with a reason.)_
+
+- [x] Pulse: +5 threat-research feeds (Microsoft, ESET, SentinelLabs, Sophos X-Ops, watchTowr) → 19 sources.
+- [x] Flare: new RSS advisory client + Cisco, Fortinet, CERT-FR, JPCERT/CC, Debian (145 advisories) with source filter + Signal catalog entry.
+- [x] Atlas: "· filtered" stat pill; EPSS low-value de-emphasis; removed dead backlog CSS.
+- [x] README updated to reflect ATT&CK, EPSS, ransomware linkage, new feeds, and optional API keys.
 - [x] Ransomware-group panel on the CVE page (Ransomware.live Pro API).
 - [x] CVE → ATT&CK technique panel (CWE→CAPEC→ATT&CK); defaults to high-confidence
   (direct) mappings, related ones behind a toggle.

@@ -123,6 +123,42 @@ SOURCES: list[dict] = [
         "category": "Advisories",
         "accent": "#f1c40f",
     },
+    # ── Vendor threat-research blogs (free RSS) ──────────────────────────
+    {
+        "handle": "msft_security",
+        "name": "Microsoft Security Blog",
+        "url": "https://www.microsoft.com/en-us/security/blog/feed/",
+        "category": "Research",
+        "accent": "#00a4ef",
+    },
+    {
+        "handle": "eset",
+        "name": "ESET WeLiveSecurity",
+        "url": "https://www.welivesecurity.com/en/rss/feed/",
+        "category": "Research",
+        "accent": "#00a9e0",
+    },
+    {
+        "handle": "sentinellabs",
+        "name": "SentinelLabs",
+        "url": "https://www.sentinelone.com/labs/feed/",
+        "category": "Research",
+        "accent": "#6b0aea",
+    },
+    {
+        "handle": "sophos_xops",
+        "name": "Sophos X-Ops",
+        "url": "https://news.sophos.com/en-us/category/threat-research/feed/",
+        "category": "Research",
+        "accent": "#0a5ed7",
+    },
+    {
+        "handle": "watchtowr",
+        "name": "watchTowr Labs",
+        "url": "https://labs.watchtowr.com/rss/",
+        "category": "Research",
+        "accent": "#00e0a4",
+    },
 ]
 
 SOURCE_BY_HANDLE = {s["handle"]: s for s in SOURCES}

@@ -276,7 +276,7 @@ function render() {
         });
     }
 
-    // Stats pill — include the active scope so the count isn't misleading
+    // Stats pill — make it obvious when a filter/search is narrowing the count
     let feedLabel = 'CVEs';
     if (state.feed === 'kev') feedLabel = 'KEV entries';
     else if (state.feed === 'ransomware') feedLabel = 'ransomware CVEs';
@@ -284,11 +284,19 @@ function render() {
     let scope = '';
     if (state.feed === 'recent') {
         scope = state.days ? ` · last ${state.days} days` : ' · all time';
-        if (state.keyword) scope = ` · "${state.keyword}"`;
-        else if (state.severity) scope += ` · ${state.severity}`;
     }
-    document.getElementById('stat-total').textContent =
-        state.total.toLocaleString() + ' ' + feedLabel + scope;
+
+    const filters = [];
+    if (state.keyword) filters.push(`"${state.keyword}"`);
+    if (state.vector) filters.push(`vector ${state.vector}`);
+    if (state.severity) filters.push(state.severity);
+    if (state.highEpssOnly) filters.push('EPSS ≥ 50%');
+
+    let label = state.total.toLocaleString() + ' ' + feedLabel + scope;
+    if (filters.length) {
+        label += ` · ${filters.join(' · ')} · filtered`;
+    }
+    document.getElementById('stat-total').textContent = label;
 
     const startN = (state.page - 1) * state.size + 1;
     const endN = Math.min(state.page * state.size, state.total);
@@ -314,6 +322,17 @@ function render() {
 function rceCell(rce) {
     if (rce === 'confirmed') return '<span class="rce-yes" title="RCE-type flaw with a known public exploit">💥 Yes</span>';
     return '<span class="avail-no">—</span>';
+}
+
+// EPSS is a daily-updated probability of exploitation in the next 30 days. It's
+// valid from day one, but most (especially new) CVEs sit near zero — so dim the
+// low values and highlight the ones that actually stand out.
+function epssCell(pct) {
+    const p = Number(pct) || 0;
+    let cls = 'epss-neg';           // < 1% — negligible, de-emphasized
+    if (p >= 10) cls = 'epss-hi';   // ≥ 10% — notable
+    else if (p >= 1) cls = 'epss-mid';
+    return `<span class="${cls}" title="Exploit probability, next 30 days (EPSS)">${p}%</span>`;
 }
 
 function renderRow(r) {
@@ -356,7 +375,7 @@ function renderRow(r) {
         <td>${rceCell(r.rce)}</td>
         <td>${cvssCell}</td>
         <td>${r.severity ? `<span class="sev-badge sev-${cvssSev}">${r.severity}</span>` : '<span class="sev-badge sev-none">—</span>'}</td>
-        <td>${r.epss_percent}%</td>
+        <td>${epssCell(r.epss_percent)}</td>
         <td>${kevCell}</td>
         <td class="col-product">${productCell}</td>
         <td class="col-desc" title="${escapeHtml(r.description)}">${escapeHtml(truncate(r.description, 110))}</td>
