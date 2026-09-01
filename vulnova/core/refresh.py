@@ -82,6 +82,18 @@ def refresh_all_sources(force: bool = True) -> dict:
         except Exception as e:  # noqa: BLE001
             summary["advisories"] = f"error: {e}"
 
+        # Ransomware.live CVE->groups index (only when a key is set). Uses its
+        # own weekly TTL rather than the caller's `force` so we never burn the
+        # ~394-call walk on every 6-hour cycle.
+        try:
+            from vulnova.sources.ransomwarelive import RansomwareLiveClient
+            rl = RansomwareLiveClient(config=config)
+            if rl.api_key:
+                idx = rl.get_index(force=False)
+                summary["ransomware_groups"] = idx.get("cve_count", 0)
+        except Exception as e:  # noqa: BLE001
+            summary["ransomware_groups"] = f"error: {e}"
+
         # Record when this refresh finished so the UI can show last/next run.
         try:
             cache.set(_LOCK_NS, _STATUS_KEY,

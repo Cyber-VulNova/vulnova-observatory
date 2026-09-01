@@ -22,6 +22,7 @@ from vulnova.core.cvss import parse_vector
 from vulnova.core.cwe_data import lookup_cwe
 from vulnova.core.tracking import TrackingStore
 from vulnova.sources.attack import AttackClient
+from vulnova.sources.ransomwarelive import RansomwareLiveClient
 from vulnova.sources.cvefeed import CVEFeedClient
 from vulnova.sources.epss import EPSSClient
 from vulnova.sources.exploitdb import ExploitDBClient
@@ -860,10 +861,18 @@ def create_app() -> Flask:
                 cvss_version = cvefeed.get("cvss_version") or cvss_version
                 cvss_from_cvefeed = True
 
+            # Ransomware groups known to exploit this CVE (Ransomware.live).
+            # Reads the cached index only — never blocks on a build.
+            try:
+                ransomware_groups = RansomwareLiveClient(config=config).lookup_cve(cve.cve_id)
+            except Exception:
+                ransomware_groups = []
+
             cache.close()
             return jsonify({
                 "cve_id": cve.cve_id,
                 "cvefeed": cvefeed,
+                "ransomware_groups": ransomware_groups,
                 "cvss_from_cvefeed": cvss_from_cvefeed,
                 "description": cve.description,
                 "published": cve.published,

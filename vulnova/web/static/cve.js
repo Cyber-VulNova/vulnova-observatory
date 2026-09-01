@@ -161,11 +161,32 @@ function renderRadar(d) {
 
 function renderRansomware(d) {
     const known = d.kev_details && (d.kev_details.known_ransomware_use || '').toLowerCase() === 'known';
-    if (known) {
+    const groups = Array.isArray(d.ransomware_groups) ? d.ransomware_groups : [];
+
+    // Named-group attribution from Ransomware.live (groups observed exploiting
+    // this CVE). Shown as chips linking to each group's profile.
+    let groupsHtml = '';
+    if (groups.length) {
+        const chips = groups.map(g => {
+            const ctx = [g.vendor, g.product].filter(Boolean).join(' ');
+            const title = ctx ? ` title="Exploits ${escapeHtml(ctx)}"` : '';
+            const url = g.url || '#';
+            return `<a class="ransom-group" href="${escapeHtml(url)}" target="_blank" rel="noopener"${title}>${escapeHtml(g.name)}</a>`;
+        }).join('');
+        groupsHtml = `<div class="ransom-groups-label">Groups linked to this CVE</div>
+            <div class="ransom-groups">${chips}</div>
+            <div class="side-source">Attribution · Ransomware.live</div>`;
+    }
+
+    if (known || groups.length) {
+        const kevLine = known
+            ? `<div class="ransom-hit">Known ransomware campaign use</div>
+               <div class="side-action">Associated with ransomware operations (per CISA KEV).</div>`
+            : '';
         return `<div class="side-box side-box-ransom">
             <div class="side-box-title">🦠 Ransomware</div>
-            <div class="ransom-hit">Known ransomware campaign use</div>
-            <div class="side-action">Associated with ransomware operations (per CISA KEV).</div>
+            ${kevLine}
+            ${groupsHtml}
         </div>`;
     }
     if (d.in_kev) {

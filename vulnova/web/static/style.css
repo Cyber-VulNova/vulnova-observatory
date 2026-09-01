@@ -1009,6 +1009,19 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .side-box-ransom { border-color: rgba(220,53,69,0.4); background: rgba(220,53,69,0.06); }
 .ransom-hit { color: var(--danger); font-weight: 700; font-size: 14px; }
 .ransom-none { color: var(--success); font-weight: 600; font-size: 13px; }
+.ransom-groups-label {
+    margin-top: 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase; color: var(--text-dim);
+}
+.ransom-groups { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ransom-group {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    background: rgba(220,53,69,0.14); border: 1px solid rgba(220,53,69,0.4);
+    color: var(--danger); font-size: 12px; font-weight: 600;
+    text-decoration: none; transition: background 0.15s, transform 0.15s;
+}
+.ransom-group:hover { background: rgba(220,53,69,0.26); transform: translateY(-1px); }
+.side-source { font-size: 11px; color: var(--text-dim); margin-top: 10px; }
 .cve-section {
     background: var(--bg-card);
     border: 1px solid var(--border);

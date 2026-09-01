@@ -93,6 +93,10 @@ class Config:
             "nvd": ["VULNOVA_NVD_KEY", "NVD_API_KEY"],
             "github": ["VULNOVA_GITHUB_TOKEN", "GITHUB_TOKEN"],
             "cvefeed": ["VULNOVA_CVEFEED_KEY", "CVEFEED_API_KEY"],
+            "ransomwarelive": [
+                "VULNOVA_RANSOMWARELIVE_KEY",
+                "RANSOMWARE_LIVE_API_KEY",
+            ],
         }
         for env_var in env_map.get(name, []):
             value = os.environ.get(env_var)
@@ -107,7 +111,7 @@ class Config:
 
     def list_keys(self) -> dict[str, bool]:
         """Return a dict of key_name -> is_configured for all known keys."""
-        known_keys = ["nvd", "github", "cvefeed"]
+        known_keys = ["nvd", "github", "cvefeed", "ransomwarelive"]
         return {k: self.has_api_key(k) for k in known_keys}
 
     # ─── General Config ───────────────────────────────────────────────────
