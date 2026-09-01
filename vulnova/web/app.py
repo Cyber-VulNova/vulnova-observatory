@@ -719,8 +719,6 @@ def create_app() -> Flask:
             cache = Cache(config.cache_db_path, config.cache_ttl)
 
             nvd = NVDClient(config=config, cache=cache)
-            epss_client = EPSSClient(cache=cache)
-            kev_client = KEVClient(cache=cache)
             exploitdb = ExploitDBClient(config=config)
 
             cve = nvd.lookup_cve(cve_id)
@@ -728,18 +726,63 @@ def create_app() -> Flask:
                 cache.close()
                 return jsonify({"error": "CVE not found"}), 404
 
-            epss = epss_client.get_score(cve.cve_id)
-            epss_prob = epss.epss if epss else 0.0
-            kev_entry = kev_client.get_entry(cve.cve_id)
-            in_kev = kev_entry is not None
-
-            # Deep exploit discovery (one CVE at a time — safe for rate limits)
+            # ── Parallel data fetch ──────────────────────────────────────
+            # A cold CVE page needs ~10 independent external lookups. Run them
+            # concurrently instead of serially (cut cold latency from ~15s to
+            # roughly the slowest single call). SQLite cache connections can't
+            # be shared across threads, so every task opens its own Cache.
             edb = exploitdb.search_by_cve(cve.cve_id) if exploitdb.is_available else []
-            pocs = GitHubPoCClient(config=config, cache=cache).search_all(
-                cve.cve_id, exclude_collections=True)
-            nuclei = NucleiClient(config=config, cache=cache).search(cve.cve_id)
-            msf = MetasploitClient(config=config, cache=cache).search(cve.cve_id)
-            vulhub = VulhubClient(cache=cache).search(cve.cve_id)
+            product = _derive_product(cve.cpes, cve.description, cve.affected_products)
+
+            # Related-CVE query (product name only; the full CNA vendor string
+            # like "Apache Software Foundation" is too restrictive to search).
+            rel_query = ""
+            if cve.affected_products:
+                ap0 = cve.affected_products[0]
+                rel_query = (ap0.get("product") or ap0.get("vendor") or "").strip()
+            if not rel_query and product.get("label"):
+                rel_query = product["label"].split(" · ")[0].split(" / ")[-1]
+
+            cid = cve.cve_id
+
+            def _with_cache(fn):
+                c = Cache(config.cache_db_path, config.cache_ttl)
+                try:
+                    return fn(c)
+                finally:
+                    c.close()
+
+            jobs = {
+                "epss": lambda: _with_cache(lambda c: EPSSClient(cache=c).get_score(cid)),
+                "kev": lambda: _with_cache(lambda c: KEVClient(cache=c).get_entry(cid)),
+                "pocs": lambda: _with_cache(lambda c: GitHubPoCClient(config=config, cache=c).search_all(cid, exclude_collections=True)),
+                "nuclei": lambda: _with_cache(lambda c: NucleiClient(config=config, cache=c).search(cid)),
+                "msf": lambda: _with_cache(lambda c: MetasploitClient(config=config, cache=c).search(cid)),
+                "vulhub": lambda: _with_cache(lambda c: VulhubClient(cache=c).search(cid)),
+                "history": lambda: _with_cache(lambda c: EPSSClient(cache=c).get_history(cid)),
+                "cvefeed": lambda: _with_cache(lambda c: CVEFeedClient(config=config, cache=c).get_details(cid)),
+                "related": (lambda: _with_cache(lambda c: NVDClient(config=config, cache=c).search_by_keyword(rel_query, results_per_page=8))) if rel_query else (lambda: []),
+            }
+            results = {}
+            with ThreadPoolExecutor(max_workers=len(jobs)) as pool:
+                futs = {pool.submit(fn): k for k, fn in jobs.items()}
+                for fut in as_completed(futs):
+                    try:
+                        results[futs[fut]] = fut.result()
+                    except Exception:
+                        results[futs[fut]] = None
+
+            epss = results.get("epss")
+            epss_prob = epss.epss if epss else 0.0
+            kev_entry = results.get("kev")
+            in_kev = kev_entry is not None
+            pocs = results.get("pocs") or []
+            nuclei = results.get("nuclei") or []
+            msf = results.get("msf") or []
+            vulhub = results.get("vulhub") or []
+            epss_history = results.get("history") or []
+            cvefeed = results.get("cvefeed")
+            related_raw = results.get("related") or []
 
             exploits = []
             for e in edb[:6]:
@@ -799,8 +842,6 @@ def create_app() -> Flask:
                     "category": _reference_category(r.tags),
                 })
 
-            product = _derive_product(cve.cpes, cve.description, cve.affected_products)
-
             # CVSS breakdown: parse each metric's vector into readable components
             cvss_breakdown = []
             for m in cve.cvss_metrics:
@@ -830,37 +871,20 @@ def create_app() -> Flask:
                         "default_status": ap.get("default_status", ""),
                     })
 
-            # EPSS trend history
-            epss_history = epss_client.get_history(cve.cve_id)
-
-            # Related CVEs — other CVEs on the same product (best-effort, cached).
-            # Use the product name only; the full CNA vendor string (e.g.
-            # "Apache Software Foundation") is too restrictive for keyword search.
+            # Related CVEs — other CVEs on the same product (fetched in the
+            # parallel batch above; filter out this CVE and cap at 6).
             related = []
-            rel_query = ""
-            if cve.affected_products:
-                ap0 = cve.affected_products[0]
-                rel_query = (ap0.get("product") or ap0.get("vendor") or "").strip()
-            if not rel_query and product.get("label"):
-                rel_query = product["label"].split(" · ")[0].split(" / ")[-1]
-            if rel_query:
-                for rc in nvd.search_by_keyword(rel_query, results_per_page=8):
-                    if rc.cve_id == cve.cve_id:
-                        continue
-                    related.append({
-                        "cve_id": rc.cve_id,
-                        "cvss_score": rc.base_score,
-                        "severity": rc.severity,
-                        "published": rc.published[:10] if rc.published else "",
-                    })
-                    if len(related) >= 6:
-                        break
-
-            # CVEfeed.io enrichment (remediation solution + SSVC) — best-effort.
-            try:
-                cvefeed = CVEFeedClient(config=config, cache=cache).get_details(cve.cve_id)
-            except Exception:
-                cvefeed = None
+            for rc in related_raw:
+                if rc.cve_id == cve.cve_id:
+                    continue
+                related.append({
+                    "cve_id": rc.cve_id,
+                    "cvss_score": rc.base_score,
+                    "severity": rc.severity,
+                    "published": rc.published[:10] if rc.published else "",
+                })
+                if len(related) >= 6:
+                    break
 
             # CVSS fallback: if NVD hasn't scored this CVE yet, use CVEfeed's score.
             cvss_score = cve.base_score
