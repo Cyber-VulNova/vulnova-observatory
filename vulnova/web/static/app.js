@@ -1,6 +1,6 @@
 // ─── VulNova CVE Table ─────────────────────────────────────────────────
 
-const COLSPAN = 15;
+const COLSPAN = 14;
 
 const EXPLOIT_RANK = {
     weaponized: 5, public: 4, likely: 3, elevated: 2, none: 1, "": 0,
@@ -34,9 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') applySearch();
     });
     document.getElementById('clear-btn').addEventListener('click', clearFilters);
-    document.getElementById('vector-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') applySearch();
-    });
     document.getElementById('refresh-btn').addEventListener('click', () => loadPage(true));
     document.getElementById('severity-filter').addEventListener('change', applySearch);
     document.getElementById('days-filter').addEventListener('change', applySearch);
@@ -167,15 +164,11 @@ function applySearch() {
         window.open('/cve/' + raw.toUpperCase(), '_blank', 'noopener');
         return;
     }
-    // A CVSS-vector-looking query routes to the vector filter.
+    // A CVSS-vector-looking query is handled as a vector filter.
     const looksVector = /^CVSS:/i.test(raw) || /\bAV:[NALP]\b/i.test(raw) || /\b(AC|PR|UI|S|C|I|A):[A-Z]\b/.test(raw);
-    if (looksVector) {
-        document.getElementById('vector-input').value = raw;
-        document.getElementById('search-input').value = '';
-    }
 
     state.keyword = looksVector ? '' : raw;
-    state.vector = document.getElementById('vector-input').value.trim();
+    state.vector = looksVector ? raw : '';
     // Vector search runs against the NVD recent feed, so switch to it.
     if (state.vector && state.feed !== 'recent') {
         state.feed = 'recent';
@@ -194,7 +187,6 @@ function applySearch() {
 
 function clearFilters() {
     document.getElementById('search-input').value = '';
-    document.getElementById('vector-input').value = '';
     document.getElementById('severity-filter').value = '';
     document.getElementById('severity-filter').disabled = false;
     document.getElementById('days-filter').value = '30';
@@ -254,8 +246,7 @@ function sortAccessor(row, key) {
     if (key === 'severity') return SEVERITY_RANK[(row.severity || '').toUpperCase()] || 0;
     if (key === 'product_label') return (row.product && row.product.label) || '';
     if (key === 'in_kev') return row.in_kev ? 1 : 0;
-    if (key === 'exploit_available') return row.exploit_available ? 1 : 0;
-    if (key === 'rce') return { confirmed: 2, potential: 1, none: 0 }[row.rce] || 0;
+    if (key === 'rce') return { confirmed: 1, none: 0 }[row.rce] || 0;
     if (key === 'cwe') return (row.weaknesses && row.weaknesses.length) ? row.weaknesses[0] : '';
     return row[key];
 }
@@ -320,15 +311,8 @@ function render() {
     });
 }
 
-function availCell(available) {
-    return available
-        ? '<span class="avail-yes" title="A public exploit is available">✔ Yes</span>'
-        : '<span class="avail-no" title="No public exploit known at list level">—</span>';
-}
-
 function rceCell(rce) {
-    if (rce === 'confirmed') return '<span class="rce-yes" title="Remote-code-execution exploit available">💥 Yes</span>';
-    if (rce === 'potential') return '<span class="rce-maybe" title="Looks like an RCE flaw (CWE/description); no confirmed public exploit at list level">◐ Potential</span>';
+    if (rce === 'confirmed') return '<span class="rce-yes" title="RCE-type flaw with a known public exploit">💥 Yes</span>';
     return '<span class="avail-no">—</span>';
 }
 
@@ -369,7 +353,6 @@ function renderRow(r) {
         </td>
         <td class="cell-cve"><a class="mono cve-link" href="/cve/${r.cve_id}" target="_blank" rel="noopener" title="Open full CVE page">${r.cve_id}</a>${(r.cve_tags && r.cve_tags.some(t => /disput/i.test(t))) ? ' <span class="disputed-flag" title="Disputed by vendor">⚑</span>' : ''}</td>
         <td><span class="exp-badge exp-${es.level}" title="${escapeHtml(es.detail)}">${escapeHtml(es.label)}</span></td>
-        <td>${availCell(r.exploit_available)}</td>
         <td>${rceCell(r.rce)}</td>
         <td>${cvssCell}</td>
         <td>${r.severity ? `<span class="sev-badge sev-${cvssSev}">${r.severity}</span>` : '<span class="sev-badge sev-none">—</span>'}</td>

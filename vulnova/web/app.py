@@ -290,17 +290,12 @@ def _exploit_flags(level: str, weaknesses: list[str], description: str) -> dict:
 
     - exploit_available: a public exploit is known (KEV weaponized or an
       Exploit-DB entry). EPSS-only signals ('likely'/'elevated') don't count.
-    - rce: 'confirmed' (RCE-type AND exploit available), 'potential' (RCE-type
-      but no confirmed public exploit), or 'none'.
+    - rce: 'confirmed' only when an RCE-type flaw has a known public exploit;
+      otherwise 'none'. (No speculative 'potential' — we only claim RCE when
+      there's an actual exploit backing it.)
     """
     exploit_available = level in ("weaponized", "public")
-    rce_type = _is_rce(weaknesses, description)
-    if rce_type and exploit_available:
-        rce = "confirmed"
-    elif rce_type:
-        rce = "potential"
-    else:
-        rce = "none"
+    rce = "confirmed" if (exploit_available and _is_rce(weaknesses, description)) else "none"
     return {"exploit_available": exploit_available, "rce": rce}
 
 

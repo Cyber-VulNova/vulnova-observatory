@@ -51,10 +51,6 @@
             <button id="search-btn" class="btn btn-primary">Search</button>
             <button id="clear-btn" class="btn btn-ghost" title="Clear filters">Clear</button>
         </div>
-        <div class="toolbar-group vector-group">
-            <label class="filter-label" title="Query CVEs by CVSS v3 vector components, e.g. AV:N/AC:L/PR:N">Vector</label>
-            <input type="text" id="vector-input" placeholder="CVSS vector e.g. AV:N/AC:L/PR:N" autocomplete="off">
-        </div>
         <div class="toolbar-group">
             <label class="filter-label">Window</label>
             <select id="days-filter">
@@ -112,8 +108,7 @@
                     <th class="col-expand"></th>
                     <th data-sort="cve_id" class="sortable">CVE ID</th>
                     <th data-sort="exploit_status" class="sortable" title="Public exploit status">Exploit</th>
-                    <th data-sort="exploit_available" class="sortable" title="Public exploit available (CISA KEV or Exploit-DB)">Avail</th>
-                    <th data-sort="rce" class="sortable" title="Remote-code-execution exploit — heuristic from CWE/description + exploit availability">RCE</th>
+                    <th data-sort="rce" class="sortable" title="Remote-code-execution: confirmed only when a public exploit backs an RCE-type flaw">RCE</th>
                     <th data-sort="cvss_score" class="sortable">CVSS</th>
                     <th data-sort="severity" class="sortable">Severity</th>
                     <th data-sort="epss_percent" class="sortable" title="Exploit Prediction Scoring System">EPSS</th>
@@ -131,6 +126,7 @@
                     <div class="spinner"></div>
                     <div>Loading CVEs from NVD…</div>
                 </td></tr>
+                <!-- colspan managed by COLSPAN in app.js -->
             </tbody>
         </table>
     </main>

@@ -92,7 +92,7 @@ function renderPage(d) {
 
             ${renderCweSection(d.cwe_details)}
 
-            ${renderAttack(d.attack_techniques)}
+            ${renderAttack(d)}
 
             ${renderReferences(d.references)}
 
@@ -440,17 +440,27 @@ function attackCard(t) {
     </a>`;
 }
 
-function renderAttack(techs) {
-    if (!techs || !techs.length) return '';
+function renderAttack(d) {
+    const techs = (d && d.attack_techniques) || [];
+    const cwes = (d && d.weaknesses) || [];
+    // Nothing to map from (no CWEs) → hide the panel entirely.
+    if (!techs.length && !cwes.length) return '';
+
     // High-confidence = techniques mapped directly from this CVE's own weakness
     // attack patterns. "related" (inherited from a broader parent pattern) is
     // lower-confidence guesswork, hidden behind a toggle and off by default.
     const direct = techs.filter(t => t.direct);
     const related = techs.filter(t => !t.direct);
 
-    const body = direct.length
-        ? `<div class="atk-grid">${direct.map(attackCard).join('')}</div>`
-        : `<div class="detail-none">No high-confidence ATT&CK techniques map directly from this CVE's weaknesses.</div>`;
+    let body;
+    if (direct.length) {
+        body = `<div class="atk-grid">${direct.map(attackCard).join('')}</div>`;
+    } else if (related.length) {
+        body = `<div class="detail-none">No high-confidence (directly-mapped) ATT&CK techniques for this CVE. Lower-confidence matches are available below.</div>`;
+    } else {
+        const list = cwes.length ? ` (${escapeHtml(cwes.join(', '))})` : '';
+        body = `<div class="detail-none">No ATT&CK techniques map from this CVE's weakness type${cwes.length > 1 ? 's' : ''}${list}. MITRE's CWE→CAPEC→ATT&CK data carries no technique mapping for these — common for memory-safety and deserialization flaws.</div>`;
+    }
 
     let relatedBlock = '';
     if (related.length) {
