@@ -828,6 +828,11 @@ def create_app() -> Flask:
         """Orbit — the CVE watchlist/tracker page."""
         return render_template("orbit.html")
 
+    @app.route("/backlog")
+    def backlog_page():
+        """Backlog — the project's build/roadmap tracker."""
+        return render_template("backlog.html")
+
     @app.route("/api/tracking", methods=["GET"])
     def api_tracking_list():
         """List all tracked CVEs."""

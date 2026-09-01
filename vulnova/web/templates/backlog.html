@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ cve_id }} · VulNova</title>
+    <title>VulNova Backlog — Roadmap</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
 </head>
@@ -18,21 +18,30 @@
                 <a href="/flare" class="topnav-link">Flare · Advisories</a>
                 <a href="/sources" class="topnav-link">Signal · Sources</a>
                 <a href="/orbit" class="topnav-link">Orbit · Tracking</a>
-                <a href="/backlog" class="topnav-link">Backlog</a>
+                <a href="/backlog" class="topnav-link active">Backlog</a>
             </nav>
         </div>
         <div class="topbar-stats">
-            <a href="/" class="btn btn-ghost btn-sm">← Back to database</a>
+            <span class="stat-pill" id="backlog-stat">—</span>
         </div>
     </header>
 
-    <main class="cve-page" id="cve-root" data-cve="{{ cve_id }}">
-        <div class="table-loading">
-            <div class="spinner"></div>
-            <div>Loading {{ cve_id }} — gathering exploit intel and timeline…</div>
+    <main class="backlog-page">
+        <div class="atlas-intro" style="padding-left:0">
+            <span class="atlas-title">Backlog</span>
+            <span class="atlas-tag">The build roadmap — what's shipped, in progress, and planned for VulNova Observatory.</span>
         </div>
+
+        <div class="backlog-filters" id="backlog-filters">
+            <button class="pill pill-active" data-filter="all">All</button>
+            <button class="pill" data-filter="done">✅ Done</button>
+            <button class="pill" data-filter="in_progress">🚧 In progress</button>
+            <button class="pill" data-filter="planned">🗓 Planned</button>
+        </div>
+
+        <div id="backlog-list" class="backlog-list"></div>
     </main>
 
-    <script src="{{ url_for('static', filename='cve.js') }}"></script>
+    <script src="{{ url_for('static', filename='backlog.js') }}"></script>
 </body>
 </html>

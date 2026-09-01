@@ -149,6 +149,9 @@ select {
 .checkbox { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
 
 .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     padding: 10px 20px;
     border: none;
     border-radius: var(--radius);
@@ -157,6 +160,7 @@ select {
     cursor: pointer;
     transition: all 0.15s;
     white-space: nowrap;
+    text-decoration: none;
 }
 .btn-primary { background: var(--accent); color: white; }
 .btn-primary:hover { background: var(--accent-hover); }
@@ -1397,7 +1401,7 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .orbit-page { max-width: 1100px; margin: 0 auto; padding: 28px 24px 60px; width: 100%; }
 
-.btn-track { margin-top: 12px; }
+.btn-track { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; text-decoration: none; }
 
 .orbit-form {
     border: 1px solid var(--border);
@@ -1466,3 +1470,32 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .orbit-due-over { color: var(--danger); font-weight: 600; }
 .orbit-due-soon { color: var(--warning); font-weight: 600; }
 .orbit-due-ok { color: var(--text-secondary); }
+
+/* ─── Backlog — Roadmap ────────────────────────────────────────────────── */
+
+.backlog-page { max-width: 900px; margin: 0 auto; padding: 28px 24px 60px; width: 100%; }
+.backlog-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+
+.backlog-list { display: flex; flex-direction: column; gap: 12px; }
+.backlog-card {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--text-dim);
+    border-radius: 10px;
+    background: var(--bg-elevated, rgba(255,255,255,0.03));
+    padding: 14px 16px;
+}
+.backlog-card.bk-done { border-left-color: var(--success); }
+.backlog-card.bk-progress { border-left-color: var(--warning); }
+.backlog-card.bk-planned { border-left-color: var(--text-dim); }
+
+.backlog-card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.backlog-num { font-family: 'SF Mono','Consolas',monospace; font-size: 12px; color: var(--text-dim); }
+.backlog-title { font-weight: 700; color: var(--text-primary); flex: 1; min-width: 180px; }
+.backlog-status {
+    font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 20px; white-space: nowrap;
+}
+.backlog-status.bk-done { background: rgba(46,204,113,0.18); color: var(--success); }
+.backlog-status.bk-progress { background: rgba(243,156,18,0.18); color: var(--warning); }
+.backlog-status.bk-planned { background: rgba(108,108,128,0.15); color: var(--text-dim); }
+.bk-blocked { font-size: 12px; font-weight: 600; color: var(--danger); }
+.backlog-desc { margin-top: 8px; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
