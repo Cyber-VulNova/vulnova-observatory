@@ -8,6 +8,50 @@ import os
 from pathlib import Path
 from typing import Optional
 
+_DOTENV_LOADED = False
+
+
+def _parse_env_file(path: Path) -> None:
+    """Load KEY=VALUE lines from a .env file into os.environ (no override)."""
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip()
+        if key.startswith("export "):
+            key = key[len("export "):].strip()
+        val = val.strip().strip('"').strip("'")
+        # Don't override variables already set in the real environment.
+        if key and key not in os.environ:
+            os.environ[key] = val
+
+
+def _load_dotenv_once() -> None:
+    """Best-effort load of a .env file, once per process.
+
+    Search order: $VULNOVA_ENV_FILE, then ./.env, then the repo root .env.
+    Safe no-op when no file exists (e.g. in containers using real env vars).
+    """
+    global _DOTENV_LOADED
+    if _DOTENV_LOADED:
+        return
+    _DOTENV_LOADED = True
+
+    candidates = []
+    override = os.environ.get("VULNOVA_ENV_FILE")
+    if override:
+        candidates.append(Path(override))
+    candidates.append(Path.cwd() / ".env")
+    candidates.append(Path(__file__).resolve().parents[2] / ".env")
+    for path in candidates:
+        try:
+            if path and path.is_file():
+                _parse_env_file(path)
+                return
+        except OSError:
+            continue
+
 
 class Config:
     """Manages VulNova configuration and API key storage."""
@@ -18,6 +62,7 @@ class Config:
     CACHE_DB = "cache.db"
 
     def __init__(self):
+        _load_dotenv_once()
         self.app_dir = Path.home() / self.APP_DIR_NAME
         self.app_dir.mkdir(parents=True, exist_ok=True)
         self._config_path = self.app_dir / self.CONFIG_FILE
@@ -43,14 +88,16 @@ class Config:
         if name in self._keys and self._keys[name]:
             return self._keys[name]
 
-        # Fall back to environment variables
+        # Fall back to environment variables (multiple accepted names each).
         env_map = {
-            "nvd": "VULNOVA_NVD_KEY",
-            "github": "VULNOVA_GITHUB_TOKEN",
+            "nvd": ["VULNOVA_NVD_KEY", "NVD_API_KEY"],
+            "github": ["VULNOVA_GITHUB_TOKEN", "GITHUB_TOKEN"],
+            "cvefeed": ["VULNOVA_CVEFEED_KEY", "CVEFEED_API_KEY"],
         }
-        env_var = env_map.get(name)
-        if env_var:
-            return os.environ.get(env_var)
+        for env_var in env_map.get(name, []):
+            value = os.environ.get(env_var)
+            if value:
+                return value
 
         return None
 
@@ -60,7 +107,7 @@ class Config:
 
     def list_keys(self) -> dict[str, bool]:
         """Return a dict of key_name -> is_configured for all known keys."""
-        known_keys = ["nvd", "github"]
+        known_keys = ["nvd", "github", "cvefeed"]
         return {k: self.has_api_key(k) for k in known_keys}
 
     # ─── General Config ───────────────────────────────────────────────────

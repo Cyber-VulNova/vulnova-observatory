@@ -31,6 +31,7 @@ exploitdb_cache/
 # Secrets / credentials (never commit these)
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 keys.json
