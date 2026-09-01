@@ -19,9 +19,61 @@ _Last updated: 2026-08-31_
 
 ## Planned features (not built yet)
 
-- [ ] **CISA Vulnrichment / ADP** enrichment (CVSS, CWE, KEV context added by CISA ADP).
-- [ ] **CISA advisories + ICS advisories** (RSS) as a feed/source.
-- [ ] **CSAF vendor advisories** integration (structured vendor security advisories).
+- [ ] New data-feed integrations — see "Candidate TIP feed integrations" below
+  (CISA Advisories/ICS RSS, vendor PSIRTs, CERTs, CSAF, Vulnrichment/ADP, a new
+  Intelligence/IOC area, etc.).
+
+## Candidate TIP feed integrations (from `TIP/` registry, ~150 feeds)
+
+Gap analysis vs. what's already wired in. Legend: **[easy]** = free + machine-readable
+(RSS/JSON, no auth); **[key]** = needs an API key. Ordered by value/effort.
+
+### Already integrated (reference)
+- **Pulse/News:** The Hacker News, BleepingComputer, The Register, SecurityWeek,
+  Dark Reading, The Record, Krebs, SANS ISC, Unit 42, Cisco Talos, Rapid7,
+  Project Zero, ZDI (published + upcoming).
+- **Flare/Advisories:** GitHub GHSA, Ubuntu USN, Red Hat, Palo Alto PSIRT,
+  Microsoft MSRC, VMware/Broadcom, OSV (RustSec/PyPI/Go).
+- **Core intel:** NVD, KEV, EPSS, ATT&CK, CAPEC, CVEfeed, Exploit-DB, GitHub PoC,
+  Metasploit, Nuclei, Vulhub, Ransomware.live.
+
+### Recommended first (biggest value, least effort)
+- [ ] **CISA Cybersecurity Advisories RSS** -> Flare [easy]
+- [ ] **CISA ICS Advisories RSS** -> Flare [easy]
+- [ ] **Top exploited-vendor PSIRTs** -> Flare: Cisco, Fortinet, Ivanti, Citrix,
+  F5, Apache httpd, OpenSSH [easy] (the ones that actually show in KEV/ransomware)
+- [ ] **5-8 threat-research blogs** -> Pulse: Microsoft, Mandiant, Google TAG,
+  ESET, watchTowr, SentinelLabs, Sophos X-Ops [easy] (just new entries in `news.py` SOURCES)
+
+### News / Pulse - missing
+- [ ] Threat-research blogs [easy RSS]: Microsoft Security Blog / Threat Intelligence,
+  Google TAG, Mandiant, CrowdStrike, ESET WeLiveSecurity, Kaspersky Securelist,
+  Trend Micro, Sophos X-Ops, SentinelLabs, Bitdefender Labs, Huntress, Qualys TRU,
+  Tenable Research, Eclypsium, watchTowr Labs.
+- [ ] Research/disclosure [easy]: Packet Storm, Full Disclosure list, CERT/CC Vulnerability Notes.
+
+### Advisories / Flare - missing
+- [ ] Vendor PSIRTs [mostly easy RSS/JSON]: Cisco PSIRT, Fortinet PSIRT, Ivanti,
+  Citrix, F5, Juniper PSIRT, Atlassian, GitLab, Oracle CPU, SAP, IBM, Adobe, Apple,
+  Google Chrome / Android, Mozilla.
+- [ ] OS / ecosystem [easy]: Debian, SUSE, Apache httpd, OpenSSH, Kubernetes CVE feed,
+  FreeBSD, Alpine, Chainguard/Wolfi, Linux Kernel CVE, WordPress/Patchstack.
+  (Several already partially flow through OSV.)
+- [ ] Government CERTs [easy where RSS exists]: CERT-EU, CERT-FR / ANSSI, UK NCSC,
+  JPCERT/CC, CCCS Canada, ACSC Australia, CERT-In, ENISA, CERT.PL, CERT.at, INCIBE.
+- [ ] Standards / enrichment: CISA Vulnrichment/ADP (SSVC + enrichment), CSAF
+  (normalized vendor advisories), MSRC CVRF API (machine-readable).
+
+### Intelligence - would be a NEW area (no dedicated intel/IOC surface today)
+- [ ] Exploit/PoC feeds [easy]: Exploit-DB RSS, Packet Storm, watchTowr.
+- [ ] Ransomware tracking [easy]: Ransomwatch, CISA StopRansomware, Ransomware.live
+  victim/group stream (currently used only for CVE->group links).
+- [ ] IOC / CTI - free no-auth: abuse.ch URLhaus, Feodo Tracker, SSL Blacklist;
+  Spamhaus DROP, Blocklist.de, FireHOL, CINSscore.
+- [ ] IOC / CTI - [key]: abuse.ch ThreatFox & MalwareBazaar, AlienVault OTX,
+  GreyNoise, Shodan, Censys, AbuseIPDB.
+- [ ] Detection content [easy]: SigmaHQ, Emerging Threats rules, LOLBAS, GTFOBins
+  (pair naturally with the ATT&CK page).
 
 ## Small tweaks (offered, low effort)
 
