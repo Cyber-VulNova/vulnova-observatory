@@ -617,7 +617,8 @@ def create_app() -> Flask:
             if feed in ("kev", "ransomware"):
                 payload = _kev_feed(
                     feed, page, size, keyword,
-                    epss_client, kev_client, exploitdb, edb_ready, force=force,
+                    epss_client, kev_client, exploitdb, edb_ready,
+                    config=config, cache=cache, force=force,
                 )
             else:
                 payload = _recent_feed(
@@ -954,8 +955,14 @@ def _recent_feed(page, size, keyword, severity, days_back,
 
 
 def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb_ready,
-              force=False):
-    """Build a page from the CISA KEV catalog (optionally ransomware-only)."""
+              config=None, cache=None, force=False):
+    """Build a page from the CISA KEV catalog (optionally ransomware-only).
+
+    The CISA KEV catalog carries no CVSS score. When an NVD API key is
+    configured we enrich each row with CVSS via per-CVE NVD lookups (cached);
+    without a key we skip enrichment (50 rate-limited lookups would be far too
+    slow) and CVSS still fills in when a row is expanded.
+    """
     entries = kev_client.get_all(force=force)
 
     if feed == "ransomware":
@@ -975,6 +982,11 @@ def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb
     page_entries = entries[start:start + size]
 
     epss_scores = epss_client.get_scores_bulk([e.cve_id for e in page_entries])
+
+    # Enrich with CVSS from NVD only when a key is configured (see docstring).
+    nvd = NVDClient(config=config, cache=cache) if config is not None else None
+    enrich_cvss = bool(nvd and config and config.has_api_key("nvd"))
+
     rows = []
     for e in page_entries:
         epss = epss_scores.get(e.cve_id)
@@ -984,23 +996,37 @@ def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb
         vendor, product = _prettify(e.vendor), _prettify(e.product)
         label = f"{vendor} / {product}" if product else vendor
 
+        cvss_score, cvss_version, severity, weaknesses = 0.0, "", "", []
+        cvss_pending = True
+        if enrich_cvss:
+            try:
+                cve = nvd.lookup_cve(e.cve_id)
+                if cve:
+                    cvss_score = cve.base_score
+                    cvss_version = cve.cvss.version if cve.cvss else ""
+                    severity = cve.severity
+                    weaknesses = cve.weaknesses
+                    cvss_pending = False
+            except Exception:
+                pass  # leave pending; fills in on expand
+
         rows.append({
             "cve_id": e.cve_id,
             "description": e.short_description or e.vulnerability_name,
             "published": "",  # KEV doesn't carry the CVE publish date
             "last_modified": "",
-            "cvss_score": 0.0,
-            "cvss_version": "",
-            "severity": "",
+            "cvss_score": cvss_score,
+            "cvss_version": cvss_version,
+            "severity": severity,
             "epss_percent": round(epss_prob * 100, 2),
             "in_kev": True,
             "kev_date_added": e.date_added,
             "kev_ransomware": e.known_ransomware_use,
             "product": {"vendor": vendor, "product": product, "label": label, "more": 0},
             "exploit_status": _exploit_status(True, e.known_ransomware_use, epss_prob, has_edb),
-            "weaknesses": [],
+            "weaknesses": weaknesses,
             "reference_count": 0,
-            "cvss_pending": True,  # CVSS/description fill in on expand
+            "cvss_pending": cvss_pending,  # CVSS/description fill in on expand
             "nvd_url": f"https://nvd.nist.gov/vuln/detail/{e.cve_id}",
         })
 
