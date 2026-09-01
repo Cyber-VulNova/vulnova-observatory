@@ -21,6 +21,7 @@ from vulnova.core.cpe_match import parse_cpe
 from vulnova.core.cvss import parse_vector
 from vulnova.core.cwe_data import lookup_cwe
 from vulnova.core.tracking import TrackingStore
+from vulnova.sources.attack import AttackClient
 from vulnova.sources.cvefeed import CVEFeedClient
 from vulnova.sources.epss import EPSSClient
 from vulnova.sources.exploitdb import ExploitDBClient
@@ -312,6 +313,14 @@ SOURCE_CATALOG = [
         "check_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1",
         "doc_url": "https://nvd.nist.gov/developers/vulnerabilities",
         "refresh_note": "Recent-CVE pages cached ~30 min; single CVEs ~24 h.",
+    },
+    {
+        "key": "attack", "name": "MITRE ATT&CK (Enterprise)", "category": "Threat Framework",
+        "namespace": None, "attack_index": True,
+        "purpose": "Adversary tactics & techniques matrix (MITRE ATT&CK Enterprise). Powers the ATT&CK page.",
+        "check_url": "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json",
+        "doc_url": "https://attack.mitre.org/",
+        "refresh_note": "STIX dataset downloaded + trimmed locally; refreshed ~30 d.",
     },
     {
         "key": "cvefeed", "name": "CVEfeed.io", "category": "Vulnerability Data",
@@ -902,10 +911,25 @@ def create_app() -> Flask:
         """Orbit — the CVE watchlist/tracker page."""
         return render_template("orbit.html")
 
-    @app.route("/backlog")
-    def backlog_page():
-        """Backlog — the project's build/roadmap tracker."""
-        return render_template("backlog.html")
+    @app.route("/attack")
+    def attack_page():
+        """ATT&CK — the MITRE ATT&CK Enterprise matrix."""
+        return render_template("attack.html")
+
+    @app.route("/api/attack", methods=["GET"])
+    def api_attack():
+        """MITRE ATT&CK Enterprise tactics + techniques matrix.
+
+        First call downloads and caches the MITRE ATT&CK data (may take a
+        while); subsequent calls read the local cached index.
+        """
+        try:
+            force = request.args.get("refresh", "") in ("1", "true", "yes")
+            idx = AttackClient(config=Config()).get_index(force=force)
+            return jsonify(idx)
+        except Exception:
+            logger.exception("Failed to load ATT&CK matrix")
+            return jsonify({"error": "Internal server error"}), 500
 
     @app.route("/api/tracking", methods=["GET"])
     def api_tracking_list():
