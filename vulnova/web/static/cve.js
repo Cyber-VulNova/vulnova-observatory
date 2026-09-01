@@ -62,7 +62,7 @@ function renderPage(d) {
     </div>
 
     <div class="cve-metrics">
-        ${metricCard('CVSS', d.cvss_score ? `${d.cvss_score}` : 'N/A', d.severity || '')}
+        ${metricCard('CVSS', d.cvss_score ? `${d.cvss_score}` : 'N/A', d.cvss_from_cvefeed ? ((d.severity || '') + ' · via CVEfeed').trim() : (d.severity || ''))}
         ${metricCard('EPSS', `${d.epss_percent}%`, 'exploitation probability (next 30 days)')}
         ${metricCard('CISA KEV', d.in_kev ? 'Listed' : 'Not listed', d.in_kev ? 'actively exploited' : '')}
         ${metricCard('Exploits', d.exploit_count, 'public sources')}

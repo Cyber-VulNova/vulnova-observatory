@@ -840,15 +840,28 @@ def create_app() -> Flask:
             except Exception:
                 cvefeed = None
 
+            # CVSS fallback: if NVD hasn't scored this CVE yet, use CVEfeed's score.
+            cvss_score = cve.base_score
+            cvss_severity = cve.severity
+            cvss_version = cve.cvss.version if cve.cvss else ""
+            cvss_from_cvefeed = False
+            if (not cvss_score) and cvefeed and cvefeed.get("cvss_score"):
+                cvss_score = cvefeed["cvss_score"]
+                cvss_severity = cvefeed.get("severity") or cvss_severity
+                cvss_version = cvefeed.get("cvss_version") or cvss_version
+                cvss_from_cvefeed = True
+
             cache.close()
             return jsonify({
                 "cve_id": cve.cve_id,
                 "cvefeed": cvefeed,
+                "cvss_from_cvefeed": cvss_from_cvefeed,
                 "description": cve.description,
                 "published": cve.published,
                 "last_modified": cve.last_modified,
-                "cvss_score": cve.base_score,
-                "severity": cve.severity,
+                "cvss_score": cvss_score,
+                "severity": cvss_severity,
+                "cvss_version": cvss_version,
                 "vector": cve.cvss.vector_string if cve.cvss else "",
                 "cvss_breakdown": cvss_breakdown,
                 "epss_percent": round(epss_prob * 100, 2),

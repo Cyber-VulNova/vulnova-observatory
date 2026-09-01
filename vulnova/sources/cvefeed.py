@@ -97,6 +97,10 @@ class CVEFeedClient:
             "title": (raw.get("title") or "").strip(),
             "cvefeed_url": raw.get("url", ""),
             "status": raw.get("status", ""),
+            # CVSS from CVEfeed (often present when NVD is still "awaiting analysis").
+            "cvss_score": raw.get("cvss_score") or 0.0,
+            "severity": (raw.get("severity") or "").upper(),
+            "cvss_version": raw.get("cvss_version", ""),
             "is_remote": bool(raw.get("is_remote")),
             "is_rejected": bool(raw.get("is_rejected")),
             "solution": solution,
