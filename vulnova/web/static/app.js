@@ -160,7 +160,21 @@ function applyPreset(preset) {
 }
 
 function applySearch() {
-    state.keyword = document.getElementById('search-input').value.trim();
+    const raw = document.getElementById('search-input').value.trim();
+
+    // Smart routing: a CVE ID opens its detail page directly.
+    if (/^CVE-\d{4}-\d{3,}$/i.test(raw)) {
+        window.open('/cve/' + raw.toUpperCase(), '_blank', 'noopener');
+        return;
+    }
+    // A CVSS-vector-looking query routes to the vector filter.
+    const looksVector = /^CVSS:/i.test(raw) || /\bAV:[NALP]\b/i.test(raw) || /\b(AC|PR|UI|S|C|I|A):[A-Z]\b/.test(raw);
+    if (looksVector) {
+        document.getElementById('vector-input').value = raw;
+        document.getElementById('search-input').value = '';
+    }
+
+    state.keyword = looksVector ? '' : raw;
     state.vector = document.getElementById('vector-input').value.trim();
     // Vector search runs against the NVD recent feed, so switch to it.
     if (state.vector && state.feed !== 'recent') {

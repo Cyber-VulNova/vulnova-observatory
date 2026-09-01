@@ -136,21 +136,23 @@ body {
     gap: 8px;
 }
 
-.search-group { flex: 1; min-width: 320px; }
+/* Large primary search bar (spans its own full-width row) */
+.search-group { flex: 1 1 100%; min-width: 100%; gap: 10px; }
 
 #search-input {
     flex: 1;
-    padding: 10px 16px;
+    padding: 15px 20px;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: 12px;
     background: var(--bg-input);
     color: var(--text-primary);
-    font-size: 14px;
+    font-size: 16px;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
-#search-input:focus { border-color: var(--accent); }
+#search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(233,69,96,0.15); }
 #search-input::placeholder { color: var(--text-dim); }
+.search-group .btn { padding: 14px 24px; font-size: 15px; }
 
 .filter-label {
     font-size: 12px;
@@ -917,7 +919,7 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 /* ─── Standalone CVE Page ──────────────────────────────────────────────── */
 
 .cve-page {
-    max-width: 1100px;
+    max-width: 1500px;
     margin: 0 auto;
     padding: 28px 24px 60px;
     width: 100%;
@@ -969,12 +971,44 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .metric-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent); margin-top: 4px; }
 .metric-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
-/* Two-column layout */
+/* Three-region layout (left rail · main · right rail) */
+.cve-grid {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr) 320px;
+    gap: 18px;
+    align-items: start;
+}
+.cve-rail { display: flex; flex-direction: column; min-width: 0; }
+.cve-rail .side-box { margin-bottom: 18px; }
+@media (max-width: 1240px) {
+    .cve-grid { grid-template-columns: 300px minmax(0, 1fr); }
+    .cve-rail-right { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+    .cve-rail-right .side-box { margin-bottom: 0; }
+}
+@media (max-width: 820px) {
+    .cve-grid { grid-template-columns: 1fr; }
+    .cve-rail-right { grid-template-columns: 1fr; }
+}
+
+/* Legacy two-column (kept for safety) */
 .cve-columns {
     display: grid;
     grid-template-columns: 1fr 300px;
     gap: 18px;
 }
+
+/* Threat radar (SVG) */
+.cve-radar .radar-svg { width: 100%; height: auto; overflow: visible; display: block; }
+.radar-ring { fill: none; stroke: var(--border); stroke-width: 1; opacity: 0.55; }
+.radar-spoke { stroke: var(--border); stroke-width: 1; opacity: 0.45; }
+.radar-area { fill: var(--accent); fill-opacity: 0.28; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.radar-label { fill: var(--text-secondary); font-size: 9px; font-weight: 600; }
+.radar-val { fill: var(--text-dim); font-size: 8px; }
+
+/* Ransomware panel */
+.side-box-ransom { border-color: rgba(220,53,69,0.4); background: rgba(220,53,69,0.06); }
+.ransom-hit { color: var(--danger); font-weight: 700; font-size: 14px; }
+.ransom-none { color: var(--success); font-weight: 600; font-size: 13px; }
 .cve-section {
     background: var(--bg-card);
     border: 1px solid var(--border);

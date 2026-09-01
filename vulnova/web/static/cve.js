@@ -68,7 +68,14 @@ function renderPage(d) {
         ${metricCard('Exploits', d.exploit_count, 'public sources')}
     </div>
 
-    <div class="cve-columns">
+    <div class="cve-grid">
+        <aside class="cve-rail cve-rail-left">
+            ${renderRadar(d)}
+            ${renderKevBox(d)}
+            ${renderRansomware(d)}
+            ${renderQuickFacts(d)}
+        </aside>
+
         <div class="cve-main">
             <section class="cve-section">
                 <h2>Summary</h2>
@@ -77,13 +84,11 @@ function renderPage(d) {
 
             ${renderCvefeed(d.cvefeed)}
 
+            ${renderExploits(d.exploits)}
+
             ${renderCvss(d)}
 
             ${renderVersions(d.affected_versions)}
-
-            ${renderTimeline(d.timeline)}
-
-            ${renderExploits(d.exploits)}
 
             ${renderCweSection(d.cwe_details)}
 
@@ -92,9 +97,9 @@ function renderPage(d) {
             ${renderCpes(d.cpes)}
         </div>
 
-        <aside class="cve-side">
-            ${renderKevBox(d)}
+        <aside class="cve-rail cve-rail-right">
             ${renderEpssTrend(d.epss_history)}
+            ${renderTimeline(d.timeline)}
             ${renderRelated(d.related)}
             ${renderExternalLinks(d)}
         </aside>
@@ -107,6 +112,84 @@ function metricCard(label, value, sub) {
         <div class="metric-label">${escapeHtml(label)}</div>
         ${sub ? `<div class="metric-sub">${escapeHtml(sub)}</div>` : ''}
     </div>`;
+}
+
+function clamp01(x) { return Math.max(0, Math.min(1, x || 0)); }
+
+function renderRadar(d) {
+    const bd = (d.cvss_breakdown && d.cvss_breakdown[0]) || {};
+    const ransom = d.kev_details && (d.kev_details.known_ransomware_use || '').toLowerCase() === 'known';
+    const threat = d.in_kev ? (ransom ? 1 : 0.7)
+        : ((d.epss_percent || 0) >= 50 ? 0.45 : (d.epss_percent || 0) >= 10 ? 0.25 : 0.1);
+    const axes = [
+        { label: 'Severity', v: clamp01((d.cvss_score || 0) / 10) },
+        { label: 'Exploitability', v: clamp01((bd.exploitability_score || 0) / 3.9) },
+        { label: 'Impact', v: clamp01((bd.impact_score || 0) / 6.0) },
+        { label: 'EPSS', v: clamp01((d.epss_percent || 0) / 100) },
+        { label: 'Exploits', v: clamp01((d.exploit_count || 0) / 3) },
+        { label: 'Threat', v: clamp01(threat) },
+    ];
+    const size = 260, cx = size / 2, cy = size / 2, R = 78, n = axes.length;
+    const ang = i => (-90 + i * 360 / n) * Math.PI / 180;
+    const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
+
+    let rings = '';
+    [0.25, 0.5, 0.75, 1].forEach(f => {
+        const p = axes.map((_, i) => pt(i, R * f).map(x => x.toFixed(1)).join(',')).join(' ');
+        rings += `<polygon points="${p}" class="radar-ring"/>`;
+    });
+    let spokes = '', labels = '';
+    axes.forEach((a, i) => {
+        const [x, y] = pt(i, R);
+        spokes += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="radar-spoke"/>`;
+        const [lx, ly] = pt(i, R + 14);
+        const anchor = Math.abs(lx - cx) < 10 ? 'middle' : (lx > cx ? 'start' : 'end');
+        labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="radar-label">${a.label}</text>`;
+        labels += `<text x="${lx.toFixed(1)}" y="${(ly + 11).toFixed(1)}" text-anchor="${anchor}" class="radar-val">${Math.round(a.v * 100)}</text>`;
+    });
+    const poly = axes.map((a, i) => pt(i, R * a.v).map(x => x.toFixed(1)).join(',')).join(' ');
+
+    return `<div class="side-box cve-radar">
+        <div class="side-box-title">Threat Radar</div>
+        <svg viewBox="0 0 ${size} ${size}" class="radar-svg" role="img" aria-label="CVE threat radar">
+            ${rings}${spokes}
+            <polygon points="${poly}" class="radar-area"/>
+            ${labels}
+        </svg>
+    </div>`;
+}
+
+function renderRansomware(d) {
+    const known = d.kev_details && (d.kev_details.known_ransomware_use || '').toLowerCase() === 'known';
+    if (known) {
+        return `<div class="side-box side-box-ransom">
+            <div class="side-box-title">🦠 Ransomware</div>
+            <div class="ransom-hit">Known ransomware campaign use</div>
+            <div class="side-action">Associated with ransomware operations (per CISA KEV).</div>
+        </div>`;
+    }
+    if (d.in_kev) {
+        return `<div class="side-box">
+            <div class="side-box-title">🦠 Ransomware</div>
+            <div class="ransom-none">No known ransomware campaign use</div>
+        </div>`;
+    }
+    return '';
+}
+
+function renderQuickFacts(d) {
+    const rows = [
+        ['Published', (d.published || '').slice(0, 10) || '—'],
+        ['Last modified', (d.last_modified || '').slice(0, 10) || '—'],
+        ['CVSS', d.cvss_score ? `${d.cvss_score} ${d.severity || ''}`.trim() : 'N/A'],
+        ['CVSS version', d.cvss_version || '—'],
+        ['EPSS', `${d.epss_percent}%`],
+    ];
+    const kv = rows.map(([k, v]) =>
+        `<div class="side-kv"><span>${k}</span><b>${escapeHtml(String(v))}</b></div>`).join('');
+    const vec = d.vector
+        ? `<div class="cve-vector"><span>CVSS Vector</span><code>${escapeHtml(d.vector)}</code></div>` : '';
+    return `<div class="side-box"><div class="side-box-title">Quick Facts</div>${kv}${vec}</div>`;
 }
 
 function renderCvefeed(cf) {
