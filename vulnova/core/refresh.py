@@ -94,6 +94,19 @@ def refresh_all_sources(force: bool = True) -> dict:
         except Exception as e:  # noqa: BLE001
             summary["ransomware_groups"] = f"error: {e}"
 
+        # ATT&CK matrix + CAPEC->ATT&CK bridge (30-day TTL each). Warmed here so
+        # the CVE page's ATT&CK panel has data without a per-request build.
+        try:
+            from vulnova.sources.attack import AttackClient
+            summary["attack"] = AttackClient(config=config).get_index(force=False).get("count", 0)
+        except Exception as e:  # noqa: BLE001
+            summary["attack"] = f"error: {e}"
+        try:
+            from vulnova.sources.capec import CapecClient
+            summary["capec"] = CapecClient(config=config).get_index(force=False).get("cwe_count", 0)
+        except Exception as e:  # noqa: BLE001
+            summary["capec"] = f"error: {e}"
+
         # Record when this refresh finished so the UI can show last/next run.
         try:
             cache.set(_LOCK_NS, _STATUS_KEY,

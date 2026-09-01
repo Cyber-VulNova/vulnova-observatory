@@ -171,6 +171,71 @@ class EPSSClient:
 
         return history
 
+    def get_top(self, limit: int = 100) -> list[EPSSScore]:
+        """Return the CVEs with the highest EPSS probability, descending.
+
+        Uses the FIRST.org API's ``order=!epss`` sort. Cached briefly since the
+        global ranking only shifts on daily EPSS recomputation.
+        """
+        limit = max(1, min(int(limit), 200))
+        cache_key = f"top:{limit}"
+        if self.cache:
+            cached = self.cache.get(self.NAMESPACE, cache_key)
+            if cached is not None:
+                return [EPSSScore.from_dict(x) for x in cached]
+
+        try:
+            resp = httpx.get(
+                EPSS_API_BASE,
+                params={"order": "!epss", "limit": limit},
+                timeout=20.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except (httpx.HTTPError, Exception):
+            return []
+
+        scores = []
+        for entry in data.get("data", []):
+            scores.append(EPSSScore(
+                cve_id=entry.get("cve", ""),
+                epss=float(entry.get("epss", 0.0)),
+                percentile=float(entry.get("percentile", 0.0)),
+                date=entry.get("date", ""),
+            ))
+
+        if self.cache and scores:
+            self.cache.set(self.NAMESPACE, cache_key,
+                           [s.to_dict() for s in scores], ttl=21600)  # 6h
+        return scores
+
+    def count_above(self, threshold: float) -> int:
+        """Return how many CVEs have an EPSS probability above ``threshold``.
+
+        The FIRST.org API reports the matching ``total`` even with limit=1, so
+        this is a single cheap call per threshold.
+        """
+        cache_key = f"count-gt:{threshold}"
+        if self.cache:
+            cached = self.cache.get(self.NAMESPACE, cache_key)
+            if cached is not None:
+                return cached
+
+        try:
+            resp = httpx.get(
+                EPSS_API_BASE,
+                params={"epss-gt": threshold, "limit": 1},
+                timeout=15.0,
+            )
+            resp.raise_for_status()
+            total = int(resp.json().get("total", 0))
+        except (httpx.HTTPError, Exception):
+            return 0
+
+        if self.cache:
+            self.cache.set(self.NAMESPACE, cache_key, total, ttl=21600)  # 6h
+        return total
+
     def get_scores_bulk(self, cve_ids: list[str]) -> dict[str, EPSSScore]:
         """Get EPSS scores for multiple CVEs in one request.
 

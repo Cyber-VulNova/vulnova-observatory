@@ -92,6 +92,8 @@ function renderPage(d) {
 
             ${renderCweSection(d.cwe_details)}
 
+            ${renderAttack(d.attack_techniques)}
+
             ${renderReferences(d.references)}
 
             ${renderCpes(d.cpes)}
@@ -412,6 +414,42 @@ function renderCweSection(cwes) {
         </div>`;
     }).join('');
     return `<section class="cve-section"><h2>Weaknesses &amp; Attack Patterns</h2>${items}</section>`;
+}
+
+const TACTIC_LABEL = {
+    'reconnaissance': 'Recon', 'resource-development': 'Resource Dev',
+    'initial-access': 'Initial Access', 'execution': 'Execution',
+    'persistence': 'Persistence', 'privilege-escalation': 'Priv Esc',
+    'defense-evasion': 'Defense Evasion', 'credential-access': 'Cred Access',
+    'discovery': 'Discovery', 'lateral-movement': 'Lateral Movement',
+    'collection': 'Collection', 'command-and-control': 'C2',
+    'exfiltration': 'Exfiltration', 'impact': 'Impact',
+};
+
+function renderAttack(techs) {
+    if (!techs || !techs.length) return '';
+    const cards = techs.map(t => {
+        const tactics = (t.tactics || []).slice(0, 3)
+            .map(sn => `<span class="atk-tactic">${escapeHtml(TACTIC_LABEL[sn] || sn)}</span>`).join('');
+        const via = (t.capecs || []).map(c => c.name ? `${c.id}: ${c.name}` : c.id).join(', ');
+        const badge = t.direct
+            ? '<span class="atk-badge atk-direct" title="Directly mapped from this CWE\'s attack pattern">direct</span>'
+            : '<span class="atk-badge atk-related" title="Inherited from a parent attack pattern">related</span>';
+        const name = t.name || '(technique)';
+        return `<a class="atk-card" href="${t.url}" target="_blank" rel="noopener"${via ? ` title="via ${escapeHtml(via)}"` : ''}>
+            <div class="atk-card-top">
+                <span class="atk-id">${escapeHtml(t.id)}</span>
+                ${badge}
+            </div>
+            <div class="atk-name">${escapeHtml(name)}</div>
+            ${tactics ? `<div class="atk-tactics">${tactics}</div>` : ''}
+        </a>`;
+    }).join('');
+    return `<section class="cve-section">
+        <h2>ATT&amp;CK Techniques <span class="cf-src">heuristic · via CWE→CAPEC→ATT&amp;CK</span></h2>
+        <p class="atk-intro">Likely adversary techniques inferred from this CVE's weaknesses. Mapping is heuristic — <b>direct</b> comes straight from the weakness's attack pattern; <b>related</b> is inherited from a broader pattern.</p>
+        <div class="atk-grid">${cards}</div>
+    </section>`;
 }
 
 function renderEpssTrend(history) {

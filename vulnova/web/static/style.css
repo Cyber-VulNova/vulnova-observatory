@@ -1261,6 +1261,92 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
     padding: 2px 8px; border-radius: 6px; font-size: 11px; margin: 2px 3px;
 }
 
+/* ATT&CK techniques panel (CVE page) */
+.atk-intro { color: var(--text-secondary); font-size: 12.5px; line-height: 1.55; margin: 0 0 12px; }
+.atk-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 10px;
+}
+.atk-card {
+    display: block; text-decoration: none; padding: 10px 12px; border-radius: 10px;
+    background: var(--bg-elevated, rgba(255,255,255,0.03));
+    border: 1px solid var(--border); transition: border-color 0.15s, transform 0.15s;
+}
+.atk-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.atk-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.atk-id { font-family: var(--mono, monospace); font-size: 12px; font-weight: 700; color: var(--accent); }
+.atk-name { color: var(--text-primary); font-size: 13px; font-weight: 600; margin-top: 3px; line-height: 1.35; }
+.atk-badge { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.03em; }
+.atk-direct { background: rgba(46,204,113,0.16); color: #58d68d; }
+.atk-related { background: rgba(241,196,15,0.14); color: #d4ac0d; }
+.atk-tactics { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+.atk-tactic { font-size: 10.5px; color: var(--text-dim); background: rgba(127,127,127,0.12); padding: 1px 6px; border-radius: 5px; }
+
+/* ── EPSS Prediction page ──────────────────────────────────────────────── */
+.epss-page { max-width: 1200px; margin: 0 auto; padding: 20px 24px 60px; }
+.epss-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 14px 0 20px; }
+.epss-stat-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; border-left: 4px solid var(--border);
+}
+.epss-stat-card.crit { border-left-color: var(--danger); }
+.epss-stat-card.high { border-left-color: #e67e22; }
+.epss-stat-card.mod  { border-left-color: #f1c40f; }
+.epss-stat-val { font-size: 26px; font-weight: 800; color: var(--text-primary); }
+.epss-stat-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-top: 2px; }
+.epss-stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
+.epss-toolbar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+.epss-toolbar input {
+    flex: 1 1 320px; padding: 11px 14px; font-size: 14px; border-radius: 10px;
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary);
+}
+.epss-toolbar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,166,255,0.18); }
+.epss-updated { font-size: 12px; color: var(--text-dim); }
+
+.epss-table-wrap { overflow-x: auto; }
+.epss-table { width: 100%; border-collapse: collapse; }
+.epss-table th, .epss-table td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+.epss-table th { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; }
+.th-note { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-dim); font-size: 10px; }
+.epss-rank { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.epss-cve { color: var(--accent); font-weight: 600; text-decoration: none; font-family: var(--mono, monospace); }
+.epss-cve:hover { text-decoration: underline; }
+.epss-prob { font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.epss-pct, .epss-dim { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+
+.risk-cell { display: flex; align-items: center; gap: 8px; min-width: 130px; }
+.risk-track { flex: 1; height: 7px; border-radius: 4px; background: rgba(127,127,127,0.15); overflow: hidden; }
+.risk-fill { height: 100%; border-radius: 4px; }
+.risk-critical { background: var(--danger); } .risk-t-critical { color: var(--danger); }
+.risk-high { background: #e67e22; } .risk-t-high { color: #e67e22; }
+.risk-moderate { background: #f1c40f; } .risk-t-moderate { color: #d4ac0d; }
+.risk-low { background: #7f8c8d; } .risk-t-low { color: #95a5a6; }
+.risk-num { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 26px; text-align: right; }
+
+.epss-detail { margin-bottom: 8px; }
+.epss-detail-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+.epss-detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.epss-detail-cve { font-size: 18px; font-weight: 800; color: var(--accent); text-decoration: none; font-family: var(--mono, monospace); }
+.epss-detail-risk { margin-left: auto; font-size: 16px; font-weight: 800; }
+.epss-detail-metrics { display: flex; gap: 22px; margin: 12px 0; color: var(--text-secondary); font-size: 13px; }
+.epss-detail-metrics b { color: var(--text-primary); }
+.factors { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.factor-row { display: grid; grid-template-columns: 130px 120px 60px 1fr; align-items: center; gap: 12px; font-size: 12.5px; }
+.factor-name { color: var(--text-primary); font-weight: 600; }
+.factor-track { height: 7px; border-radius: 4px; background: rgba(127,127,127,0.15); overflow: hidden; }
+.factor-fill { height: 100%; background: var(--accent); border-radius: 4px; }
+.factor-pts { color: var(--text-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+.factor-max { color: var(--text-dim); font-weight: 500; }
+.factor-detail { color: var(--text-dim); }
+.epss-detail-note { font-size: 12px; color: var(--text-dim); margin-top: 14px; font-style: italic; line-height: 1.5; }
+
+@media (max-width: 720px) {
+    .epss-stats { grid-template-columns: 1fr; }
+    .factor-row { grid-template-columns: 1fr; gap: 3px; }
+    .factor-detail { grid-column: 1; }
+}
+
 /* EPSS sparkline */
 .epss-spark { width: 100%; height: 48px; display: block; margin: 4px 0; }
 .epss-range { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); }

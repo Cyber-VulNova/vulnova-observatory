@@ -63,6 +63,27 @@ class AttackClient:
         idx = self._load_local()
         return idx.get("updated", 0) if idx else 0
 
+    def technique_map(self) -> dict:
+        """Return {technique_id: {name, url, tactics, is_sub}} from the cache.
+
+        Reads the local index only (no build) — used to enrich technique IDs
+        that arrive from the CAPEC→ATT&CK bridge. Returns {} if not cached yet.
+        """
+        idx = self._load_local()
+        if not idx:
+            return {}
+        out = {}
+        for t in idx.get("techniques", []):
+            tid = t.get("id")
+            if tid:
+                out[tid] = {
+                    "name": t.get("name", ""),
+                    "url": t.get("url", ""),
+                    "tactics": t.get("tactics", []),
+                    "is_sub": t.get("is_sub", False),
+                }
+        return out
+
     # ─── internal ──────────────────────────────────────────────────────────
 
     def _load_local(self) -> Optional[dict]:

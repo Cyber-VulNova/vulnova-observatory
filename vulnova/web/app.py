@@ -20,8 +20,10 @@ from vulnova.core.config import Config
 from vulnova.core.cpe_match import parse_cpe
 from vulnova.core.cvss import parse_vector
 from vulnova.core.cwe_data import lookup_cwe
+from vulnova.core.prediction import exploitation_risk
 from vulnova.core.tracking import TrackingStore
 from vulnova.sources.attack import AttackClient
+from vulnova.sources.capec import CapecClient
 from vulnova.sources.ransomwarelive import RansomwareLiveClient
 from vulnova.sources.cvefeed import CVEFeedClient
 from vulnova.sources.epss import EPSSClient
@@ -222,6 +224,16 @@ def _shorten_vendor(vendor: str) -> str:
     return vendor
 
 
+def _attack_url(tid: str) -> str:
+    """Build an attack.mitre.org URL for a technique id (T1027 or T1027.009)."""
+    if not tid:
+        return ""
+    if "." in tid:
+        base, sub = tid.split(".", 1)
+        return f"https://attack.mitre.org/techniques/{base}/{sub}/"
+    return f"https://attack.mitre.org/techniques/{tid}/"
+
+
 # ─── Public-exploit status (lightweight, table-level) ─────────────────────────
 
 def _exploit_status(in_kev: bool, ransomware: str, epss_prob: float, has_edb: bool) -> dict:
@@ -334,7 +346,7 @@ SOURCE_CATALOG = [
     {
         "key": "epss", "name": "EPSS (FIRST.org)", "category": "Risk Scoring",
         "namespace": "epss",
-        "purpose": "Exploit Prediction Scoring System — probability a CVE will be exploited in the next 30 days. Shown on each CVE with an EPSS trend sparkline.",
+        "purpose": "Exploit Prediction Scoring System — probability a CVE will be exploited in the next 30 days. Powers the EPSS Prediction page (probability ranking + VulNova exploitation-risk score) and the EPSS trend sparkline on each CVE.",
         "check_url": "https://api.first.org/data/v1/epss?cve=CVE-2021-44228",
         "doc_url": "https://www.first.org/epss/",
         "refresh_note": "Scores cached ~12 h; history ~12 h.",
@@ -868,11 +880,33 @@ def create_app() -> Flask:
             except Exception:
                 ransomware_groups = []
 
+            # CVE -> ATT&CK techniques via the CWE->CAPEC->ATT&CK bridge
+            # (heuristic). Reads cached indexes only; enriches technique ids
+            # with names/tactics/urls from the ATT&CK matrix.
+            attack_techniques = []
+            try:
+                bridge = CapecClient(config=config).techniques_for_cwes(cve.weaknesses)
+                if bridge:
+                    tmap = AttackClient(config=config).technique_map()
+                    for b in bridge[:15]:
+                        meta = tmap.get(b["id"], {})
+                        attack_techniques.append({
+                            "id": b["id"],
+                            "name": meta.get("name", ""),
+                            "url": meta.get("url") or _attack_url(b["id"]),
+                            "tactics": meta.get("tactics", []),
+                            "direct": b["direct"],
+                            "capecs": b["capecs"],
+                        })
+            except Exception:
+                attack_techniques = []
+
             cache.close()
             return jsonify({
                 "cve_id": cve.cve_id,
                 "cvefeed": cvefeed,
                 "ransomware_groups": ransomware_groups,
+                "attack_techniques": attack_techniques,
                 "cvss_from_cvefeed": cvss_from_cvefeed,
                 "description": cve.description,
                 "published": cve.published,
@@ -938,6 +972,77 @@ def create_app() -> Flask:
             return jsonify(idx)
         except Exception:
             logger.exception("Failed to load ATT&CK matrix")
+            return jsonify({"error": "Internal server error"}), 500
+
+    @app.route("/epss")
+    def epss_page():
+        """EPSS Prediction — exploitation-probability ranking + risk scoring."""
+        return render_template("epss.html")
+
+    @app.route("/api/epss", methods=["GET"])
+    def api_epss():
+        """EPSS ranking + explainable VulNova exploitation-risk score.
+
+        No params: returns the top CVEs by EPSS probability plus band counts.
+        ?cve=CVE-…: returns that CVE's EPSS, KEV status, CVSS, risk breakdown,
+        and EPSS history.
+        """
+        try:
+            config = Config()
+            cache = Cache(config.cache_db_path, config.cache_ttl)
+            epss_client = EPSSClient(cache=cache)
+            kev_client = KEVClient(cache=cache)
+
+            cve_q = (request.args.get("cve") or "").strip().upper()
+            if cve_q:
+                score = epss_client.get_score(cve_q)
+                if not score:
+                    cache.close()
+                    return jsonify({"error": f"No EPSS score found for {cve_q}"}), 404
+                in_kev = kev_client.get_entry(cve_q) is not None
+                cvss = None
+                try:
+                    cve = NVDClient(config=config, cache=cache).lookup_cve(cve_q)
+                    cvss = cve.base_score if (cve and cve.base_score) else None
+                except Exception:
+                    cvss = None
+                risk = exploitation_risk(score.epss, score.percentile, in_kev, cvss=cvss)
+                history = epss_client.get_history(cve_q)
+                cache.close()
+                return jsonify({
+                    "cve": cve_q,
+                    "epss_percent": score.epss_percent,
+                    "percentile_percent": score.percentile_percent,
+                    "in_kev": in_kev,
+                    "cvss": cvss,
+                    "risk": risk,
+                    "history": history,
+                    "date": score.date,
+                })
+
+            limit = min(int(request.args.get("limit", 100) or 100), 200)
+            top = epss_client.get_top(limit)
+            kev_ids = {e.cve_id for e in kev_client.get_all()}
+            rows = []
+            for s in top:
+                in_kev = s.cve_id in kev_ids
+                rows.append({
+                    "cve": s.cve_id,
+                    "epss_percent": s.epss_percent,
+                    "percentile_percent": s.percentile_percent,
+                    "in_kev": in_kev,
+                    "risk": exploitation_risk(s.epss, s.percentile, in_kev),
+                })
+            stats = {
+                "high": epss_client.count_above(0.5),
+                "elevated": epss_client.count_above(0.1),
+                "moderate": epss_client.count_above(0.01),
+                "date": top[0].date if top else "",
+            }
+            cache.close()
+            return jsonify({"top": rows, "stats": stats})
+        except Exception:
+            logger.exception("Failed to load EPSS data")
             return jsonify({"error": "Internal server error"}), 500
 
     @app.route("/api/tracking", methods=["GET"])
