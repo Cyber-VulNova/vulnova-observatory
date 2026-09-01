@@ -21,6 +21,7 @@ from vulnova.core.cpe_match import parse_cpe
 from vulnova.core.cvss import parse_vector
 from vulnova.core.cwe_data import lookup_cwe
 from vulnova.core.tracking import TrackingStore
+from vulnova.sources.cvefeed import CVEFeedClient
 from vulnova.sources.epss import EPSSClient
 from vulnova.sources.exploitdb import ExploitDBClient
 from vulnova.sources.advisories import ALL_SOURCES, fetch_all_advisories
@@ -311,6 +312,14 @@ SOURCE_CATALOG = [
         "check_url": "https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1",
         "doc_url": "https://nvd.nist.gov/developers/vulnerabilities",
         "refresh_note": "Recent-CVE pages cached ~30 min; single CVEs ~24 h.",
+    },
+    {
+        "key": "cvefeed", "name": "CVEfeed.io", "category": "Vulnerability Data",
+        "namespace": "cvefeed",
+        "purpose": "Enriches CVE pages with remediation guidance (solution overview + actions), SSVC decision points, and remote-exploitability. Public API; set CVEFEED_API_KEY to raise limits.",
+        "check_url": "https://cvefeed.io/api/vulnerability/CVE-2024-3094/",
+        "doc_url": "https://docs.cvefeed.io/api/",
+        "refresh_note": "Per-CVE details cached ~12 h.",
     },
     {
         "key": "epss", "name": "EPSS (FIRST.org)", "category": "Risk Scoring",
@@ -825,9 +834,16 @@ def create_app() -> Flask:
                     if len(related) >= 6:
                         break
 
+            # CVEfeed.io enrichment (remediation solution + SSVC) — best-effort.
+            try:
+                cvefeed = CVEFeedClient(config=config, cache=cache).get_details(cve.cve_id)
+            except Exception:
+                cvefeed = None
+
             cache.close()
             return jsonify({
                 "cve_id": cve.cve_id,
+                "cvefeed": cvefeed,
                 "description": cve.description,
                 "published": cve.published,
                 "last_modified": cve.last_modified,

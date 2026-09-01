@@ -75,6 +75,8 @@ function renderPage(d) {
                 <p class="cve-desc">${escapeHtml(d.description)}</p>
             </section>
 
+            ${renderCvefeed(d.cvefeed)}
+
             ${renderCvss(d)}
 
             ${renderVersions(d.affected_versions)}
@@ -105,6 +107,47 @@ function metricCard(label, value, sub) {
         <div class="metric-label">${escapeHtml(label)}</div>
         ${sub ? `<div class="metric-sub">${escapeHtml(sub)}</div>` : ''}
     </div>`;
+}
+
+function renderCvefeed(cf) {
+    if (!cf) return '';
+    const sol = cf.solution || {};
+    const hasSol = sol.overview || (sol.actions && sol.actions.length);
+    const ssvc = cf.ssvc || {};
+    const hasSsvc = Object.keys(ssvc).length > 0;
+    if (!hasSol && !hasSsvc && !cf.is_remote) return '';
+
+    let solBlock = '';
+    if (hasSol) {
+        const actions = (sol.actions || []).map(a => `<li>${escapeHtml(a)}</li>`).join('');
+        solBlock = `
+            ${sol.overview ? `<p class="cf-overview">${escapeHtml(sol.overview)}</p>` : ''}
+            ${actions ? `<ul class="cf-actions">${actions}</ul>` : ''}`;
+    }
+
+    let ssvcBlock = '';
+    if (hasSsvc) {
+        const chips = Object.entries(ssvc).map(([k, v]) =>
+            `<span class="cf-ssvc"><b>${escapeHtml(labelize(k))}:</b> ${escapeHtml(String(v))}</span>`).join('');
+        ssvcBlock = `<div class="cf-ssvc-title">SSVC decision points</div><div class="cf-ssvc-row">${chips}</div>`;
+    }
+
+    const remote = cf.is_remote
+        ? '<div class="cf-remote" title="Remotely exploitable per CVEfeed.io">🌐 Remotely exploitable</div>' : '';
+    const link = cf.cvefeed_url
+        ? `<a class="cf-link" href="${cf.cvefeed_url}" target="_blank" rel="noopener">View on CVEfeed.io ↗</a>` : '';
+
+    return `<section class="cve-section cve-cvefeed">
+        <h2>Remediation &amp; Decision Intel <span class="cf-src">via CVEfeed.io</span></h2>
+        ${remote}
+        ${solBlock}
+        ${ssvcBlock}
+        ${link}
+    </section>`;
+}
+
+function labelize(k) {
+    return k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase());
 }
 
 function renderTimeline(timeline) {

@@ -1532,3 +1532,16 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .avail-no { color: var(--text-dim); }
 .rce-yes { color: var(--danger); font-weight: 700; font-size: 12px; white-space: nowrap; }
 .rce-maybe { color: var(--warning); font-weight: 600; font-size: 12px; white-space: nowrap; }
+
+/* CVEfeed.io enrichment on the CVE page */
+.cve-cvefeed .cf-src { font-size: 12px; font-weight: 500; color: var(--text-dim); }
+.cf-overview { color: var(--text-secondary); line-height: 1.6; margin-bottom: 10px; }
+.cf-actions { margin: 0 0 12px 20px; color: var(--text-secondary); line-height: 1.6; }
+.cf-actions li { margin-bottom: 4px; }
+.cf-remote { display: inline-block; color: var(--orange); font-weight: 600; font-size: 13px; margin-bottom: 10px; }
+.cf-ssvc-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin: 6px 0; }
+.cf-ssvc-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.cf-ssvc { background: var(--bg-elevated, rgba(255,255,255,0.04)); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 13px; color: var(--text-secondary); }
+.cf-ssvc b { color: var(--text-primary); }
+.cf-link { color: var(--accent); font-size: 13px; text-decoration: none; }
+.cf-link:hover { text-decoration: underline; }
