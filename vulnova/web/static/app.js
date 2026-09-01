@@ -1,6 +1,6 @@
 // ─── VulNova CVE Table ─────────────────────────────────────────────────
 
-const COLSPAN = 13;
+const COLSPAN = 15;
 
 const EXPLOIT_RANK = {
     weaponized: 5, public: 4, likely: 3, elevated: 2, none: 1, "": 0,
@@ -240,6 +240,8 @@ function sortAccessor(row, key) {
     if (key === 'severity') return SEVERITY_RANK[(row.severity || '').toUpperCase()] || 0;
     if (key === 'product_label') return (row.product && row.product.label) || '';
     if (key === 'in_kev') return row.in_kev ? 1 : 0;
+    if (key === 'exploit_available') return row.exploit_available ? 1 : 0;
+    if (key === 'rce') return { confirmed: 2, potential: 1, none: 0 }[row.rce] || 0;
     if (key === 'cwe') return (row.weaknesses && row.weaknesses.length) ? row.weaknesses[0] : '';
     return row[key];
 }
@@ -304,6 +306,18 @@ function render() {
     });
 }
 
+function availCell(available) {
+    return available
+        ? '<span class="avail-yes" title="A public exploit is available">✔ Yes</span>'
+        : '<span class="avail-no" title="No public exploit known at list level">—</span>';
+}
+
+function rceCell(rce) {
+    if (rce === 'confirmed') return '<span class="rce-yes" title="Remote-code-execution exploit available">💥 Yes</span>';
+    if (rce === 'potential') return '<span class="rce-maybe" title="Looks like an RCE flaw (CWE/description); no confirmed public exploit at list level">◐ Potential</span>';
+    return '<span class="avail-no">—</span>';
+}
+
 function renderRow(r) {
     const cvssSev = (r.severity || 'NONE').toLowerCase();
     const isExpanded = state.expanded.has(r.cve_id);
@@ -341,6 +355,8 @@ function renderRow(r) {
         </td>
         <td class="cell-cve"><a class="mono cve-link" href="/cve/${r.cve_id}" target="_blank" rel="noopener" title="Open full CVE page">${r.cve_id}</a>${(r.cve_tags && r.cve_tags.some(t => /disput/i.test(t))) ? ' <span class="disputed-flag" title="Disputed by vendor">⚑</span>' : ''}</td>
         <td><span class="exp-badge exp-${es.level}" title="${escapeHtml(es.detail)}">${escapeHtml(es.label)}</span></td>
+        <td>${availCell(r.exploit_available)}</td>
+        <td>${rceCell(r.rce)}</td>
         <td>${cvssCell}</td>
         <td>${r.severity ? `<span class="sev-badge sev-${cvssSev}">${r.severity}</span>` : '<span class="sev-badge sev-none">—</span>'}</td>
         <td>${r.epss_percent}%</td>

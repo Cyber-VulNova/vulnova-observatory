@@ -1526,3 +1526,9 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Theme toggle button */
 .theme-toggle { font-size: 15px; line-height: 1; padding: 6px 10px; }
+
+/* Exploit-availability & RCE columns */
+.avail-yes { color: var(--danger); font-weight: 600; font-size: 12px; white-space: nowrap; }
+.avail-no { color: var(--text-dim); }
+.rce-yes { color: var(--danger); font-weight: 700; font-size: 12px; white-space: nowrap; }
+.rce-maybe { color: var(--warning); font-weight: 600; font-size: 12px; white-space: nowrap; }

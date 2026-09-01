@@ -246,6 +246,49 @@ def _exploit_status(in_kev: bool, ransomware: str, epss_prob: float, has_edb: bo
     return {"label": "None known", "level": "none", "detail": ""}
 
 
+# CWEs that typically enable remote code / command execution.
+_RCE_CWES = {
+    "CWE-94", "CWE-95", "CWE-77", "CWE-78", "CWE-88", "CWE-502",
+    "CWE-434", "CWE-98", "CWE-917", "CWE-74", "CWE-1336", "CWE-470",
+}
+_RCE_KEYWORDS = (
+    "remote code execution", "execute arbitrary code", "arbitrary code execution",
+    "arbitrary command", "command execution", "code execution", "(rce)", " rce",
+)
+
+
+def _is_rce(weaknesses: list[str], description: str) -> bool:
+    """Heuristic: does this CVE look like a remote-code/command-execution flaw?
+
+    Based on the mapped CWE(s) and description keywords — a hint, not a
+    guarantee. Deep confirmation lives on the CVE page.
+    """
+    for w in (weaknesses or []):
+        if (w or "").strip().upper() in _RCE_CWES:
+            return True
+    d = (description or "").lower()
+    return any(kw in d for kw in _RCE_KEYWORDS)
+
+
+def _exploit_flags(level: str, weaknesses: list[str], description: str) -> dict:
+    """Compute the 'exploit available' + 'RCE' indicators for a table row.
+
+    - exploit_available: a public exploit is known (KEV weaponized or an
+      Exploit-DB entry). EPSS-only signals ('likely'/'elevated') don't count.
+    - rce: 'confirmed' (RCE-type AND exploit available), 'potential' (RCE-type
+      but no confirmed public exploit), or 'none'.
+    """
+    exploit_available = level in ("weaponized", "public")
+    rce_type = _is_rce(weaknesses, description)
+    if rce_type and exploit_available:
+        rce = "confirmed"
+    elif rce_type:
+        rce = "potential"
+    else:
+        rce = "none"
+    return {"exploit_available": exploit_available, "rce": rce}
+
+
 def _reference_category(tags: list[str]) -> str:
     """Bucket an NVD reference by its tags for the expander."""
     t = {x.lower() for x in tags}
@@ -928,6 +971,8 @@ def _recent_feed(page, size, keyword, severity, days_back,
         ransomware = kev_entry.known_ransomware_use if kev_entry else ""
 
         product = _derive_product(cve.cpes, cve.description, cve.affected_products)
+        es = _exploit_status(in_kev, ransomware, epss_prob, has_edb)
+        flags = _exploit_flags(es["level"], cve.weaknesses, cve.description)
 
         rows.append({
             "cve_id": cve.cve_id,
@@ -942,7 +987,9 @@ def _recent_feed(page, size, keyword, severity, days_back,
             "kev_date_added": kev_entry.date_added if kev_entry else "",
             "kev_ransomware": ransomware,
             "product": product,
-            "exploit_status": _exploit_status(in_kev, ransomware, epss_prob, has_edb),
+            "exploit_status": es,
+            "exploit_available": flags["exploit_available"],
+            "rce": flags["rce"],
             "weaknesses": cve.weaknesses,
             "cve_tags": cve.cve_tags,
             "reference_count": len(cve.references),
@@ -1025,6 +1072,9 @@ def _kev_feed(feed, page, size, keyword, epss_client, kev_client, exploitdb, edb
             "kev_ransomware": e.known_ransomware_use,
             "product": {"vendor": vendor, "product": product, "label": label, "more": 0},
             "exploit_status": _exploit_status(True, e.known_ransomware_use, epss_prob, has_edb),
+            "exploit_available": True,  # KEV entries are actively exploited
+            "rce": ("confirmed" if _is_rce(weaknesses, e.short_description or "")
+                    else "none"),
             "weaknesses": weaknesses,
             "reference_count": 0,
             "cvss_pending": cvss_pending,  # CVSS/description fill in on expand
