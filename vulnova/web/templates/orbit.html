@@ -6,6 +6,7 @@
     <title>VulNova Orbit — CVE Tracking</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
 </head>
 <body>
     <header class="topbar">
@@ -22,6 +23,7 @@
             </nav>
         </div>
         <div class="topbar-stats">
+            <button id="theme-toggle" class="btn btn-ghost btn-sm theme-toggle" title="Toggle light / dark theme">☀️</button>
             <span class="stat-pill" id="orbit-stat">— tracked</span>
         </div>
     </header>

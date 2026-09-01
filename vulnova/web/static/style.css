@@ -18,8 +18,32 @@
     --orange: #fd7e14;
     --info: #3498db;
     --border: #2a2a4a;
+    --bg-elevated: #1c1c30;
     --radius: 8px;
 }
+
+/* ─── Light theme (toggle persists in localStorage) ────────────────────── */
+[data-theme="light"] {
+    --bg-primary: #f4f5fa;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --bg-row: #f7f8fc;
+    --bg-row-hover: #eef1f8;
+    --bg-input: #eef1f8;
+    --text-primary: #16182a;
+    --text-secondary: #4a4d63;
+    --text-dim: #8388a0;
+    --accent: #d81f42;
+    --accent-hover: #b81536;
+    --success: #1e9e57;
+    --warning: #b9770a;
+    --danger: #d0392b;
+    --orange: #d96500;
+    --info: #2478c0;
+    --border: #dde0ea;
+    --bg-elevated: #ffffff;
+}
+[data-theme="light"] body { background: var(--bg-primary); }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1499,3 +1523,6 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .backlog-status.bk-planned { background: rgba(108,108,128,0.15); color: var(--text-dim); }
 .bk-blocked { font-size: 12px; font-weight: 600; color: var(--danger); }
 .backlog-desc { margin-top: 8px; color: var(--text-secondary); font-size: 14px; line-height: 1.5; }
+
+/* Theme toggle button */
+.theme-toggle { font-size: 15px; line-height: 1; padding: 6px 10px; }
