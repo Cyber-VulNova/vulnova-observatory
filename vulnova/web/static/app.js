@@ -15,6 +15,7 @@ const state = {
     page: 1,
     size: 50,
     keyword: '',
+    vector: '',
     severity: '',
     days: 30,
     highEpssOnly: false,  // client-side (High EPSS preset)
@@ -33,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') applySearch();
     });
     document.getElementById('clear-btn').addEventListener('click', clearFilters);
+    document.getElementById('vector-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') applySearch();
+    });
     document.getElementById('refresh-btn').addEventListener('click', () => loadPage(true));
     document.getElementById('severity-filter').addEventListener('change', applySearch);
     document.getElementById('days-filter').addEventListener('change', applySearch);
@@ -157,6 +161,15 @@ function applyPreset(preset) {
 
 function applySearch() {
     state.keyword = document.getElementById('search-input').value.trim();
+    state.vector = document.getElementById('vector-input').value.trim();
+    // Vector search runs against the NVD recent feed, so switch to it.
+    if (state.vector && state.feed !== 'recent') {
+        state.feed = 'recent';
+        document.getElementById('days-filter').disabled = false;
+        document.getElementById('severity-filter').disabled = false;
+        document.querySelectorAll('#filter-pills .pill').forEach(p =>
+            p.classList.toggle('pill-active', p.dataset.preset === 'all'));
+    }
     if (!document.getElementById('severity-filter').disabled) {
         state.severity = document.getElementById('severity-filter').value;
         state.days = parseInt(document.getElementById('days-filter').value);
@@ -167,12 +180,13 @@ function applySearch() {
 
 function clearFilters() {
     document.getElementById('search-input').value = '';
+    document.getElementById('vector-input').value = '';
     document.getElementById('severity-filter').value = '';
     document.getElementById('severity-filter').disabled = false;
     document.getElementById('days-filter').value = '30';
     document.getElementById('days-filter').disabled = false;
     Object.assign(state, {
-        feed: 'recent', keyword: '', severity: '', days: 30,
+        feed: 'recent', keyword: '', vector: '', severity: '', days: 30,
         highEpssOnly: false, preset: 'all', page: 1,
     });
     document.querySelectorAll('#filter-pills .pill').forEach(p =>
@@ -198,6 +212,7 @@ async function loadPage(force = false) {
     if (state.feed === 'recent') {
         if (state.severity) params.set('severity', state.severity);
         if (state.days) params.set('days', state.days);
+        if (state.vector) params.set('vector', state.vector);
     }
     if (force) params.set('refresh', '1');
 

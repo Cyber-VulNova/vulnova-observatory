@@ -605,6 +605,7 @@ def create_app() -> Flask:
             keyword = request.args.get("keyword", "").strip()
             severity = request.args.get("severity", "").strip()
             days_back = int(request.args.get("days", 0) or 0)
+            vector = request.args.get("vector", "").strip()
             force = request.args.get("refresh", "") in ("1", "true", "yes")
 
             config = Config()
@@ -624,7 +625,7 @@ def create_app() -> Flask:
                 payload = _recent_feed(
                     page, size, keyword, severity, days_back,
                     config, cache, epss_client, kev_client, exploitdb, edb_ready,
-                    force=force,
+                    cvss_metrics=vector, force=force,
                 )
 
             cache.close()
@@ -901,7 +902,7 @@ def create_app() -> Flask:
 
 def _recent_feed(page, size, keyword, severity, days_back,
                  config, cache, epss_client, kev_client, exploitdb, edb_ready,
-                 force=False):
+                 cvss_metrics="", force=False):
     """Build a page of the NVD recent-CVE feed with full enrichment."""
     nvd = NVDClient(config=config, cache=cache)
     # On a forced refresh, warm the KEV catalog once so per-row lookups below
@@ -911,7 +912,7 @@ def _recent_feed(page, size, keyword, severity, days_back,
     cves, total = nvd.list_cves(
         page=page, results_per_page=size,
         keyword=keyword, cvss_severity=severity, days_back=days_back,
-        force=force,
+        cvss_metrics=cvss_metrics, force=force,
     )
     if not cves:
         return {"rows": [], "total": total, "page": page, "size": size, "pages": 0, "feed": "recent"}

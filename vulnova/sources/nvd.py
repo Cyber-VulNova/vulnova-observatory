@@ -403,11 +403,15 @@ class NVDClient:
 
         return results
 
-    def _build_list_params(self, keyword: str, cvss_severity: str, days_back: int) -> dict:
+    def _build_list_params(self, keyword: str, cvss_severity: str, days_back: int,
+                           cvss_metrics: str = "") -> dict:
         """Build the shared NVD query params for list/count requests."""
         params: dict = {}
         if keyword.strip():
             params["keywordSearch"] = keyword.strip()
+        if cvss_metrics.strip():
+            # Full or partial CVSS v3 vector, e.g. "AV:N/AC:L/PR:N".
+            params["cvssV3Metrics"] = cvss_metrics.strip().upper()
         if cvss_severity.strip():
             params["cvssV3Severity"] = cvss_severity.strip().upper()
         if days_back and days_back > 0:
@@ -421,7 +425,7 @@ class NVDClient:
         return params
 
     def count_cves(self, keyword: str = "", cvss_severity: str = "", days_back: int = 0,
-                   force: bool = False) -> int:
+                   cvss_metrics: str = "", force: bool = False) -> int:
         """Return the total number of CVEs matching the given filters.
 
         Uses a minimal (resultsPerPage=1) request and reads totalResults.
@@ -430,13 +434,16 @@ class NVDClient:
         Args:
             force: bypass the cache and re-query NVD.
         """
-        cache_key = f"count:{keyword.lower()}:{cvss_severity.upper()}:{days_back}"
+        cache_key = (
+            f"count:{keyword.lower()}:{cvss_severity.upper()}:{days_back}:"
+            f"{cvss_metrics.upper()}"
+        )
         if self.cache and not force:
             cached = self.cache.get(self.NAMESPACE, cache_key)
             if cached is not None:
                 return cached.get("total", 0)
 
-        params = self._build_list_params(keyword, cvss_severity, days_back)
+        params = self._build_list_params(keyword, cvss_severity, days_back, cvss_metrics)
         params["resultsPerPage"] = 1
         params["startIndex"] = 0
         try:
@@ -457,6 +464,7 @@ class NVDClient:
         keyword: str = "",
         cvss_severity: str = "",
         days_back: int = 0,
+        cvss_metrics: str = "",
         force: bool = False,
     ) -> tuple[list[CVEResult], int]:
         """List CVEs page-by-page, newest published first.
@@ -482,7 +490,8 @@ class NVDClient:
         results_per_page = min(max(results_per_page, 1), 2000)
         cache_key = (
             f"listpg:{page}:{results_per_page}:"
-            f"{keyword.lower()}:{cvss_severity.upper()}:{days_back}"
+            f"{keyword.lower()}:{cvss_severity.upper()}:{days_back}:"
+            f"{cvss_metrics.upper()}"
         )
 
         if self.cache and not force:
@@ -492,7 +501,7 @@ class NVDClient:
                 return results, cached.get("total", len(results))
 
         # Determine total so we can index from the end (newest CVEs).
-        total = self.count_cves(keyword, cvss_severity, days_back, force=force)
+        total = self.count_cves(keyword, cvss_severity, days_back, cvss_metrics, force=force)
         if total <= 0:
             return [], 0
 
@@ -506,7 +515,7 @@ class NVDClient:
         if count <= 0:
             return [], total
 
-        params = self._build_list_params(keyword, cvss_severity, days_back)
+        params = self._build_list_params(keyword, cvss_severity, days_back, cvss_metrics)
         params["startIndex"] = real_start
         params["resultsPerPage"] = count
 
