@@ -426,30 +426,62 @@ const TACTIC_LABEL = {
     'exfiltration': 'Exfiltration', 'impact': 'Impact',
 };
 
+function attackCard(t) {
+    const tactics = (t.tactics || []).slice(0, 3)
+        .map(sn => `<span class="atk-tactic">${escapeHtml(TACTIC_LABEL[sn] || sn)}</span>`).join('');
+    const via = (t.capecs || []).map(c => c.name ? `${c.id}: ${c.name}` : c.id).join(', ');
+    const name = t.name || '(technique)';
+    return `<a class="atk-card" href="${t.url}" target="_blank" rel="noopener"${via ? ` title="Mapped via ${escapeHtml(via)}"` : ''}>
+        <div class="atk-card-top">
+            <span class="atk-id">${escapeHtml(t.id)}</span>
+        </div>
+        <div class="atk-name">${escapeHtml(name)}</div>
+        ${tactics ? `<div class="atk-tactics">${tactics}</div>` : ''}
+    </a>`;
+}
+
 function renderAttack(techs) {
     if (!techs || !techs.length) return '';
-    const cards = techs.map(t => {
-        const tactics = (t.tactics || []).slice(0, 3)
-            .map(sn => `<span class="atk-tactic">${escapeHtml(TACTIC_LABEL[sn] || sn)}</span>`).join('');
-        const via = (t.capecs || []).map(c => c.name ? `${c.id}: ${c.name}` : c.id).join(', ');
-        const badge = t.direct
-            ? '<span class="atk-badge atk-direct" title="Directly mapped from this CWE\'s attack pattern">direct</span>'
-            : '<span class="atk-badge atk-related" title="Inherited from a parent attack pattern">related</span>';
-        const name = t.name || '(technique)';
-        return `<a class="atk-card" href="${t.url}" target="_blank" rel="noopener"${via ? ` title="via ${escapeHtml(via)}"` : ''}>
-            <div class="atk-card-top">
-                <span class="atk-id">${escapeHtml(t.id)}</span>
-                ${badge}
-            </div>
-            <div class="atk-name">${escapeHtml(name)}</div>
-            ${tactics ? `<div class="atk-tactics">${tactics}</div>` : ''}
-        </a>`;
-    }).join('');
+    // High-confidence = techniques mapped directly from this CVE's own weakness
+    // attack patterns. "related" (inherited from a broader parent pattern) is
+    // lower-confidence guesswork, hidden behind a toggle and off by default.
+    const direct = techs.filter(t => t.direct);
+    const related = techs.filter(t => !t.direct);
+
+    const body = direct.length
+        ? `<div class="atk-grid">${direct.map(attackCard).join('')}</div>`
+        : `<div class="detail-none">No high-confidence ATT&CK techniques map directly from this CVE's weaknesses.</div>`;
+
+    let relatedBlock = '';
+    if (related.length) {
+        relatedBlock = `
+            <button class="atk-toggle" type="button" aria-expanded="false" onclick="toggleAttackRelated(this)">
+                ▸ Show ${related.length} lower-confidence (related) technique${related.length === 1 ? '' : 's'}
+            </button>
+            <div class="atk-grid atk-related-grid" hidden>${related.map(attackCard).join('')}</div>`;
+    }
+
     return `<section class="cve-section">
-        <h2>ATT&amp;CK Techniques <span class="cf-src">heuristic · via CWE→CAPEC→ATT&amp;CK</span></h2>
-        <p class="atk-intro">Likely adversary techniques inferred from this CVE's weaknesses. Mapping is heuristic — <b>direct</b> comes straight from the weakness's attack pattern; <b>related</b> is inherited from a broader pattern.</p>
-        <div class="atk-grid">${cards}</div>
+        <h2>ATT&amp;CK Techniques <span class="cf-src">high-confidence · via CWE→CAPEC→ATT&amp;CK</span></h2>
+        <p class="atk-intro">Adversary techniques mapped <b>directly</b> from this CVE's weaknesses (CWE→CAPEC→ATT&amp;CK). Only high-confidence, directly-mapped techniques are shown by default.</p>
+        ${body}
+        ${relatedBlock}
     </section>`;
+}
+
+function toggleAttackRelated(btn) {
+    const grid = btn.nextElementSibling;
+    if (!grid) return;
+    if (grid.hasAttribute('hidden')) {
+        grid.removeAttribute('hidden');
+        btn.setAttribute('aria-expanded', 'true');
+        btn.textContent = '▾ Hide related techniques';
+    } else {
+        grid.setAttribute('hidden', '');
+        btn.setAttribute('aria-expanded', 'false');
+        const n = grid.children.length;
+        btn.textContent = `▸ Show ${n} lower-confidence (related) technique${n === 1 ? '' : 's'}`;
+    }
 }
 
 function renderEpssTrend(history) {

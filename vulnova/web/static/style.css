@@ -1281,6 +1281,12 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .atk-related { background: rgba(241,196,15,0.14); color: #d4ac0d; }
 .atk-tactics { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
 .atk-tactic { font-size: 10.5px; color: var(--text-dim); background: rgba(127,127,127,0.12); padding: 1px 6px; border-radius: 5px; }
+.atk-toggle {
+    margin-top: 12px; background: none; border: none; cursor: pointer;
+    color: var(--accent); font-size: 12.5px; font-weight: 600; padding: 4px 0;
+}
+.atk-toggle:hover { text-decoration: underline; }
+.atk-related-grid { margin-top: 10px; opacity: 0.85; }
 
 /* ── EPSS Prediction page ──────────────────────────────────────────────── */
 .epss-page { max-width: 1200px; margin: 0 auto; padding: 20px 24px 60px; }
