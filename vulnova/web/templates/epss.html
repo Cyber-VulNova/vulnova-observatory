@@ -44,12 +44,17 @@
 
         <div id="epss-detail"></div>
 
-        <div id="epss-table" class="epss-table-wrap">
-            <div class="table-loading">
-                <div class="spinner"></div>
-                <div>Loading EPSS rankings…</div>
+        <section id="epss-top-section">
+            <h2 class="epss-h2">Top-rated Vulnerabilities <span class="epss-h2-sub" id="epss-top-sub">by exploitation probability (EPSS)</span></h2>
+            <div id="epss-top" class="epss-cards">
+                <div class="table-loading"><div class="spinner"></div><div>Loading EPSS data…</div></div>
             </div>
-        </div>
+        </section>
+
+        <section id="epss-movers-section">
+            <h2 class="epss-h2">Highest Delta <span class="epss-h2-sub" id="epss-movers-sub">score shifts over the last two days</span></h2>
+            <div id="epss-movers" class="epss-table-wrap"></div>
+        </section>
     </main>
 
     <script src="{{ url_for('static', filename='epss.js') }}"></script>

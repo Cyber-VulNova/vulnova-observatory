@@ -1,6 +1,4 @@
-// ─── VulNova EPSS — exploitation prediction ranking + risk scoring ──────────
-
-const estate = { rows: [] };
+// ─── VulNova EPSS — exploitation prediction dashboard ───────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
     const search = document.getElementById('epss-search');
@@ -10,27 +8,41 @@ document.addEventListener('DOMContentLoaded', () => {
     load();
 });
 
+function severityOf(cvss, severity) {
+    if (severity) return severity.toUpperCase();
+    const s = Number(cvss) || 0;
+    if (s >= 9) return 'CRITICAL';
+    if (s >= 7) return 'HIGH';
+    if (s >= 4) return 'MEDIUM';
+    if (s > 0) return 'LOW';
+    return 'NONE';
+}
+
 async function load() {
-    const el = document.getElementById('epss-table');
+    const topEl = document.getElementById('epss-top');
     try {
         const resp = await fetch('/api/epss');
         const data = await resp.json();
         if (data.error) {
-            el.innerHTML = `<div class="table-error">❌ ${escapeHtml(data.error)}</div>`;
+            topEl.innerHTML = `<div class="table-error">❌ ${escapeHtml(data.error)}</div>`;
             return;
         }
-        estate.rows = data.top || [];
-        renderStats(data.stats || {});
-        const upd = (data.stats && data.stats.date) ? `EPSS model ${data.stats.date}` : '';
+        renderStats(data);
+        const sub = document.getElementById('epss-top-sub');
+        if (sub && data.window_days) sub.textContent = `recently-published (last ${data.window_days} days), ranked by EPSS probability`;
+        renderTopCards(data.top || []);
+        renderMovers(data.movers || [], data);
+        const upd = data.score_date ? `EPSS model ${data.score_date}` : '';
         document.getElementById('epss-updated').textContent = upd;
-        document.getElementById('epss-stat').textContent = `top ${estate.rows.length} ranked`;
-        renderTable();
+        document.getElementById('epss-stat').textContent =
+            data.total ? `${Number(data.total).toLocaleString()} CVEs scored` : '—';
     } catch (err) {
-        el.innerHTML = `<div class="table-error">❌ ${escapeHtml(err.message)}</div>`;
+        topEl.innerHTML = `<div class="table-error">❌ ${escapeHtml(err.message)}</div>`;
     }
 }
 
-function renderStats(s) {
+function renderStats(d) {
+    const b = d.bands || {};
     const el = document.getElementById('epss-stats');
     const card = (label, val, cls, sub) => `
         <div class="epss-stat-card ${cls || ''}">
@@ -39,48 +51,68 @@ function renderStats(s) {
             <div class="epss-stat-sub">${escapeHtml(sub || '')}</div>
         </div>`;
     el.innerHTML =
-        card('High probability', s.high, 'crit', 'EPSS ≥ 50%') +
-        card('Elevated', s.elevated, 'high', 'EPSS ≥ 10%') +
-        card('Moderate', s.moderate, 'mod', 'EPSS ≥ 1%');
+        card('High probability', b.high, 'crit', 'EPSS ≥ 50%') +
+        card('Elevated', b.elevated, 'high', 'EPSS ≥ 10%') +
+        card('Moderate', b.moderate, 'mod', 'EPSS ≥ 1%');
 }
 
-function riskBar(risk) {
-    if (!risk) return '';
-    const score = risk.score || 0;
-    const band = (risk.band || 'Low').toLowerCase();
-    return `<div class="risk-cell" title="${escapeHtml(riskTip(risk))}">
-        <div class="risk-track"><div class="risk-fill risk-${band}" style="width:${score}%"></div></div>
-        <span class="risk-num risk-t-${band}">${score}</span>
-    </div>`;
-}
-
-function riskTip(risk) {
-    const parts = (risk.factors || []).map(f => `${f.name}: +${f.points}/${f.max} (${f.detail})`);
-    return `Exploitation Risk ${risk.score}/100 · ${risk.band}\n` + parts.join('\n');
-}
-
-function renderTable() {
-    const el = document.getElementById('epss-table');
-    if (!estate.rows.length) {
+function renderTopCards(top) {
+    const el = document.getElementById('epss-top');
+    if (!top.length) {
         el.innerHTML = `<div class="table-empty">No EPSS data available.</div>`;
         return;
     }
-    const body = estate.rows.map((r, i) => `
+    el.innerHTML = top.map(r => {
+        const sev = severityOf(r.cvss, r.severity);
+        const vendor = (r.product_label || r.vendor || '').trim();
+        const cvssTxt = (r.cvss != null && r.cvss !== '') ? r.cvss : 'N/A';
+        return `
+        <a class="epss-card" href="/cve/${encodeURIComponent(r.cve)}" title="Open ${escapeHtml(r.cve)}">
+            <div class="epss-card-top">
+                <span class="epss-card-vendor">${escapeHtml((vendor || '—').toUpperCase())}</span>
+                <span class="epss-card-cvss sev-bg-${sev.toLowerCase()}">
+                    <span class="epss-cvss-num">${cvssTxt}</span>
+                    <span class="epss-cvss-sev">${sev}</span>
+                </span>
+            </div>
+            <div class="epss-card-cve">${escapeHtml(r.cve)}</div>
+            <div class="epss-card-pred">↗ Prediction +${r.epss}</div>
+        </a>`;
+    }).join('');
+}
+
+function renderMovers(movers, d) {
+    const el = document.getElementById('epss-movers');
+    const sub = document.getElementById('epss-movers-sub');
+    if (d.prev_date && d.score_date) {
+        sub.textContent = `EPSS score shifts, ${d.prev_date} → ${d.score_date}`;
+    }
+    if (!movers.length) {
+        el.innerHTML = `<div class="table-empty">No score shifts available (the previous EPSS snapshot couldn't be loaded).</div>`;
+        return;
+    }
+    const rows = movers.map(r => {
+        const vendor = (r.product_label || r.vendor || '—');
+        const up = (r.delta || 0) >= 0;
+        const arrow = up ? '↗' : '↘';
+        const dcls = up ? 'delta-up' : 'delta-down';
+        return `
         <tr>
-            <td class="epss-rank">${i + 1}</td>
+            <td class="mono-sm">${escapeHtml(d.score_date || '')}</td>
             <td><a class="epss-cve" href="/cve/${encodeURIComponent(r.cve)}">${escapeHtml(r.cve)}</a></td>
-            <td class="epss-prob">${r.epss_percent}%</td>
-            <td class="epss-pct">${r.percentile_percent}%</td>
-            <td>${r.in_kev ? '<span class="badge badge-kev">🔥 KEV</span>' : '<span class="epss-dim">—</span>'}</td>
-            <td>${riskBar(r.risk)}</td>
-        </tr>`).join('');
+            <td>${escapeHtml(vendor)}</td>
+            <td class="epss-prob">${r.epss}%</td>
+            <td class="mono-sm">${escapeHtml(r.published || '—')}</td>
+            <td class="${dcls}">${arrow} ${up ? '+' : ''}${r.delta}</td>
+        </tr>`;
+    }).join('');
     el.innerHTML = `
         <table class="epss-table">
             <thead><tr>
-                <th>#</th><th>CVE</th><th>EPSS</th><th>Percentile</th><th>KEV</th>
-                <th>Exploitation Risk <span class="th-note">VulNova · heuristic</span></th>
+                <th>EPSS Scoring Date</th><th>CVE ID</th><th>Vendor</th>
+                <th>Score</th><th>CVE Published Date</th><th>Delta</th>
             </tr></thead>
-            <tbody>${body}</tbody>
+            <tbody>${rows}</tbody>
         </table>`;
 }
 
@@ -94,30 +126,30 @@ async function lookupCve(q) {
     detail.innerHTML = `<div class="epss-detail-card"><div class="spinner"></div> Looking up ${escapeHtml(id)}…</div>`;
     try {
         const resp = await fetch(`/api/epss?cve=${encodeURIComponent(id)}`);
-        const d = await resp.json();
-        if (d.error) {
-            detail.innerHTML = `<div class="table-error">❌ ${escapeHtml(d.error)}</div>`;
+        const dd = await resp.json();
+        if (dd.error) {
+            detail.innerHTML = `<div class="table-error">❌ ${escapeHtml(dd.error)}</div>`;
             return;
         }
-        const factors = (d.risk.factors || []).map(f => `
+        const factors = (dd.risk.factors || []).map(f => `
             <div class="factor-row">
                 <span class="factor-name">${escapeHtml(f.name)}</span>
                 <div class="factor-track"><div class="factor-fill" style="width:${(f.points / f.max * 100).toFixed(0)}%"></div></div>
                 <span class="factor-pts">+${f.points}<span class="factor-max">/${f.max}</span></span>
                 <span class="factor-detail">${escapeHtml(f.detail)}</span>
             </div>`).join('');
-        const band = (d.risk.band || 'Low').toLowerCase();
+        const band = (dd.risk.band || 'Low').toLowerCase();
         detail.innerHTML = `
             <div class="epss-detail-card">
                 <div class="epss-detail-head">
-                    <a class="epss-detail-cve" href="/cve/${encodeURIComponent(d.cve)}">${escapeHtml(d.cve)}</a>
-                    ${d.in_kev ? '<span class="badge badge-kev">🔥 CISA KEV</span>' : ''}
-                    <span class="epss-detail-risk risk-t-${band}">${d.risk.score}/100 · ${escapeHtml(d.risk.band)}</span>
+                    <a class="epss-detail-cve" href="/cve/${encodeURIComponent(dd.cve)}">${escapeHtml(dd.cve)}</a>
+                    ${dd.in_kev ? '<span class="badge badge-kev">🔥 CISA KEV</span>' : ''}
+                    <span class="epss-detail-risk risk-t-${band}">${dd.risk.score}/100 · ${escapeHtml(dd.risk.band)}</span>
                 </div>
                 <div class="epss-detail-metrics">
-                    <span>EPSS <b>${d.epss_percent}%</b></span>
-                    <span>Percentile <b>${d.percentile_percent}%</b></span>
-                    <span>CVSS <b>${d.cvss != null ? d.cvss : 'N/A'}</b></span>
+                    <span>EPSS <b>${dd.epss_percent}%</b></span>
+                    <span>Percentile <b>${dd.percentile_percent}%</b></span>
+                    <span>CVSS <b>${dd.cvss != null ? dd.cvss : 'N/A'}</b></span>
                 </div>
                 <div class="factors">${factors}</div>
                 <div class="epss-detail-note">Score is an additive, KEV-informed heuristic — it augments EPSS with confirmed exploitation and severity; it does not replace EPSS.</div>

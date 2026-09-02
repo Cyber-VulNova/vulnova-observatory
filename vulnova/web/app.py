@@ -1047,27 +1047,72 @@ def create_app() -> Flask:
                     "date": score.date,
                 })
 
-            limit = min(int(request.args.get("limit", 100) or 100), 200)
-            top = epss_client.get_top(limit)
+            # Dashboard view — bands + movers from the bulk EPSS snapshots.
+            force = request.args.get("refresh", "") in ("1", "true", "yes")
+            dash = epss_client.dashboard(force=force)
             kev_ids = {e.cve_id for e in kev_client.get_all()}
-            rows = []
-            for s in top:
-                in_kev = s.cve_id in kev_ids
-                rows.append({
-                    "cve": s.cve_id,
-                    "epss_percent": s.epss_percent,
-                    "percentile_percent": s.percentile_percent,
-                    "in_kev": in_kev,
-                    "risk": exploitation_risk(s.epss, s.percentile, in_kev),
-                })
-            stats = {
-                "high": epss_client.count_above(0.5),
-                "elevated": epss_client.count_above(0.1),
-                "moderate": epss_client.count_above(0.01),
-                "date": top[0].date if top else "",
-            }
+
+            # "Top-rated recent vulnerabilities": rank recently-published CVEs by
+            # EPSS (avoids the all-time list, which is saturated at ~100%). The
+            # NVD recent feed already gives us CVSS/vendor/published — no extra
+            # lookups needed to enrich the cards.
+            window_days = 30
+            top = []
+            try:
+                recent_cves, _ = NVDClient(config=config, cache=cache).list_cves(
+                    page=1, results_per_page=1000, days_back=window_days, force=force)
+                by_id = {c.cve_id: c for c in recent_cves}
+                for row in epss_client.top_recent(list(by_id.keys()), top_n=12):
+                    cve = by_id.get(row["cve"])
+                    if cve:
+                        prod = _derive_product(cve.cpes, cve.description, cve.affected_products)
+                        row["vendor"] = prod.get("vendor") or ""
+                        row["product_label"] = prod.get("label") or ""
+                        row["cvss"] = cve.base_score or None
+                        row["severity"] = cve.severity or ""
+                        row["published"] = (cve.published or "")[:10]
+                    row["in_kev"] = row["cve"] in kev_ids
+                    top.append(row)
+            except Exception:
+                logger.exception("EPSS top-recent enrichment failed")
+
+            # Enrich movers (any age) with vendor + published via NVD, parallel.
+            movers = dash.get("movers", [])
+
+            def _enrich(cid):
+                c = Cache(config.cache_db_path, config.cache_ttl)
+                try:
+                    cve = NVDClient(config=config, cache=c).lookup_cve(cid)
+                    if not cve:
+                        return cid, None
+                    prod = _derive_product(cve.cpes, cve.description, cve.affected_products)
+                    return cid, {
+                        "vendor": prod.get("vendor") or "",
+                        "product_label": prod.get("label") or "",
+                        "cvss": cve.base_score or None,
+                        "severity": cve.severity or "",
+                        "published": (cve.published or "")[:10],
+                    }
+                except Exception:
+                    return cid, None
+                finally:
+                    c.close()
+
+            if movers:
+                with ThreadPoolExecutor(max_workers=6) as pool:
+                    for cid, m in pool.map(_enrich, [r["cve"] for r in movers]):
+                        if m:
+                            for r in movers:
+                                if r["cve"] == cid:
+                                    r.update(m)
+                for r in movers:
+                    r["in_kev"] = r["cve"] in kev_ids
+
+            dash["top"] = top
+            dash["movers"] = movers
+            dash["window_days"] = window_days
             cache.close()
-            return jsonify({"top": rows, "stats": stats})
+            return jsonify(dash)
         except Exception:
             logger.exception("Failed to load EPSS data")
             return jsonify({"error": "Internal server error"}), 500
