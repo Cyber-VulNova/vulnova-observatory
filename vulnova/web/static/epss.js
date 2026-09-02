@@ -66,17 +66,24 @@ function renderTopCards(top) {
         const sev = severityOf(r.cvss, r.severity);
         const vendor = (r.product_label || r.vendor || '').trim();
         const cvssTxt = (r.cvss != null && r.cvss !== '') ? r.cvss : 'N/A';
+        const e = Number(r.epss) || 0;
+        const eband = e >= 10 ? 'hi' : e >= 1 ? 'mid' : 'lo';
+        const kev = r.in_kev ? '<span class="epss-kev-chip" title="In CISA KEV">🔥 KEV</span>' : '';
         return `
         <a class="epss-card" href="/cve/${encodeURIComponent(r.cve)}" title="Open ${escapeHtml(r.cve)}">
             <div class="epss-card-top">
                 <span class="epss-card-vendor">${escapeHtml((vendor || '—').toUpperCase())}</span>
-                <span class="epss-card-cvss sev-bg-${sev.toLowerCase()}">
-                    <span class="epss-cvss-num">${cvssTxt}</span>
-                    <span class="epss-cvss-sev">${sev}</span>
+                <span class="epss-card-score epss-bg-${eband}">
+                    <span class="epss-score-num">${r.epss}%</span>
+                    <span class="epss-score-lbl">EPSS</span>
                 </span>
             </div>
             <div class="epss-card-cve">${escapeHtml(r.cve)}</div>
-            <div class="epss-card-pred">↗ Prediction +${r.epss}</div>
+            <div class="epss-card-meta">
+                <span class="epss-cvss-chip sev-bg-${sev.toLowerCase()}" title="CVSS base score">CVSS ${cvssTxt} · ${sev}</span>
+                ${kev}
+            </div>
+            <div class="epss-card-pctl">Percentile ${r.percentile}% · exploitation probability (30d)</div>
         </a>`;
     }).join('');
 }
