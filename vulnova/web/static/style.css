@@ -1289,7 +1289,7 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .atk-related-grid { margin-top: 10px; opacity: 0.85; }
 
 /* ── EPSS Prediction page ──────────────────────────────────────────────── */
-.epss-page { max-width: 1200px; margin: 0 auto; padding: 20px 24px 60px; }
+.epss-page { max-width: 1500px; margin: 0 auto; padding: 20px 24px 60px; width: 100%; }
 .epss-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 14px 0 20px; }
 .epss-stat-card {
     background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
