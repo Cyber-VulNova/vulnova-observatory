@@ -70,7 +70,6 @@ function renderPage(d) {
 
     <div class="cve-grid">
         <aside class="cve-rail cve-rail-left">
-            ${renderRadar(d)}
             ${renderKevBox(d)}
             ${renderRansomware(d)}
             ${renderQuickFacts(d)}
@@ -82,11 +81,11 @@ function renderPage(d) {
                 <p class="cve-desc">${escapeHtml(d.description)}</p>
             </section>
 
+            ${renderScoring(d)}
+
             ${renderCvefeed(d.cvefeed)}
 
             ${renderExploits(d.exploits)}
-
-            ${renderCvss(d)}
 
             ${renderVersions(d.affected_versions)}
 
@@ -118,32 +117,60 @@ function metricCard(label, value, sub) {
 
 function clamp01(x) { return Math.max(0, Math.min(1, x || 0)); }
 
-// Per-version subscore scales: CVSS 2.0 subscores are 0–10; 3.x exploitability
-// max is 3.9 and impact max is ~6.0; 4.0 exposes no exploitability/impact.
-function _radarSubMax(version) {
-    const v = String(version || '');
-    if (v.startsWith('2')) return { expl: 10, impact: 10 };
-    if (v.startsWith('3')) return { expl: 3.9, impact: 6.0 };
-    return { expl: 0, impact: 0 };  // 4.0 / unknown
+// ── Vulnerability Scoring radar — each spoke is a CVSS base metric, plotted by
+// how far that metric sits toward its OWN worst case (outer ring = worst). ────
+
+const _METRIC_LABEL = {
+    AV: 'Attack Vector', AC: 'Attack Complexity', AT: 'Attack Req.',
+    PR: 'Privileges Req.', UI: 'User Interaction', S: 'Scope', AU: 'Authentication',
+    C: 'Confidentiality', I: 'Integrity', A: 'Availability',
+    VC: 'Confidentiality', VI: 'Integrity', VA: 'Availability',
+    SC: 'Subseq. Confid.', SI: 'Subseq. Integrity', SA: 'Subseq. Avail.',
+};
+const _METRIC_ORDER = ['AV', 'AC', 'AT', 'PR', 'UI', 'S', 'AU', 'C', 'I', 'A',
+    'VC', 'VI', 'VA', 'SC', 'SI', 'SA'];
+
+// Fraction toward the metric's own worst case (1 = worst / outer ring).
+function _metricWorst(abbr, value) {
+    const v = String(value || '').toLowerCase().trim();
+    const A = String(abbr || '').toUpperCase();
+    if (['C', 'I', 'A', 'VC', 'VI', 'VA', 'SC', 'SI', 'SA'].includes(A)) {
+        if (v === 'high' || v === 'complete') return 1;
+        if (v === 'low' || v === 'partial') return 0.5;
+        return 0;
+    }
+    const T = {
+        AV: { network: 1, adjacent: 0.6, 'adjacent network': 0.6, local: 0.3, physical: 0.1 },
+        AC: { low: 1, medium: 0.6, high: 0.3, l: 1, m: 0.6, h: 0.3 },
+        AT: { none: 1, present: 0.4 },
+        PR: { none: 1, low: 0.55, high: 0.2 },
+        UI: { none: 1, passive: 0.5, required: 0.3, active: 0.3 },
+        S: { changed: 1, unchanged: 0.2 },
+        AU: { none: 1, single: 0.5, multiple: 0.2 },
+    };
+    const m = T[A];
+    return (m && m[v] != null) ? m[v] : 0.5;
 }
 
-function _radarAxes(d, bd) {
-    const sm = _radarSubMax(bd.version);
-    const ransom = d.kev_details && (d.kev_details.known_ransomware_use || '').toLowerCase() === 'known';
-    const threat = d.in_kev ? (ransom ? 1 : 0.7)
-        : ((d.epss_percent || 0) >= 50 ? 0.45 : (d.epss_percent || 0) >= 10 ? 0.25 : 0.1);
-    return [
-        { label: 'Severity', v: clamp01(((bd.base_score || d.cvss_score) || 0) / 10) },
-        { label: 'Exploitability', v: sm.expl ? clamp01((bd.exploitability_score || 0) / sm.expl) : 0 },
-        { label: 'Impact', v: sm.impact ? clamp01((bd.impact_score || 0) / sm.impact) : 0 },
-        { label: 'EPSS', v: clamp01((d.epss_percent || 0) / 100) },
-        { label: 'Exploits', v: clamp01((d.exploit_count || 0) / 3) },
-        { label: 'Threat', v: clamp01(threat) },
-    ];
+function _scoringAxes(bd) {
+    const comps = (bd.components || []).filter(c => {
+        const A = String(c.abbr || '').toUpperCase();
+        const val = String(c.value || '').toLowerCase();
+        // Drop metrics that are "not defined" (e.g. Scope=X in CVSS 4.0).
+        return _METRIC_ORDER.includes(A) && val && val !== 'not defined' && val !== 'x';
+    });
+    comps.sort((a, b) =>
+        _METRIC_ORDER.indexOf(String(a.abbr).toUpperCase()) -
+        _METRIC_ORDER.indexOf(String(b.abbr).toUpperCase()));
+    return comps.map(c => ({
+        label: _METRIC_LABEL[String(c.abbr).toUpperCase()] || c.metric || c.abbr,
+        sub: c.value,
+        v: clamp01(_metricWorst(c.abbr, c.value)),
+    }));
 }
 
-function _radarSvg(axes) {
-    const size = 260, cx = size / 2, cy = size / 2, R = 78, n = axes.length;
+function _scoringSvg(axes, sevClass) {
+    const size = 320, cx = size / 2, cy = size / 2, R = 92, n = axes.length;
     const ang = i => (-90 + i * 360 / n) * Math.PI / 180;
     const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
     let rings = '';
@@ -155,58 +182,71 @@ function _radarSvg(axes) {
     axes.forEach((a, i) => {
         const [x, y] = pt(i, R);
         spokes += `<line x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" class="radar-spoke"/>`;
-        const [lx, ly] = pt(i, R + 14);
-        const anchor = Math.abs(lx - cx) < 10 ? 'middle' : (lx > cx ? 'start' : 'end');
-        labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="radar-label">${a.label}</text>`;
-        labels += `<text x="${lx.toFixed(1)}" y="${(ly + 11).toFixed(1)}" text-anchor="${anchor}" class="radar-val">${Math.round(a.v * 100)}</text>`;
+        const [lx, ly] = pt(i, R + 15);
+        const anchor = Math.abs(lx - cx) < 12 ? 'middle' : (lx > cx ? 'start' : 'end');
+        labels += `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="${anchor}" class="radar-label">${escapeHtml(a.label)}</text>`;
+        labels += `<text x="${lx.toFixed(1)}" y="${(ly + 11).toFixed(1)}" text-anchor="${anchor}" class="radar-mval">${escapeHtml(a.sub)}</text>`;
     });
     const poly = axes.map((a, i) => pt(i, R * a.v).map(x => x.toFixed(1)).join(',')).join(' ');
-    return `<svg viewBox="0 0 ${size} ${size}" class="radar-svg" role="img" aria-label="CVE threat radar">
-        ${rings}${spokes}<polygon points="${poly}" class="radar-area"/>${labels}</svg>`;
+    return `<svg viewBox="-40 -18 ${size + 80} ${size + 36}" class="radar-svg" role="img" aria-label="CVSS metric radar">
+        ${rings}${spokes}<polygon points="${poly}" class="radar-area vfill-${sevClass}"/>${labels}</svg>`;
 }
 
-function _radarBody(d, version) {
+function _scoringBody(d, version) {
     const bl = d.cvss_breakdown || [];
     const bd = bl.find(b => String(b.version) === String(version)) || bl[0] || {};
-    const v = String(bd.version || '');
-    const noSub = !(v.startsWith('2') || v.startsWith('3'));
-    const basis = v ? `Based on CVSS ${escapeHtml(v)}` : 'No CVSS score assigned';
-    const note = noSub && v
-        ? `<div class="radar-note">CVSS ${escapeHtml(v)} defines no exploitability / impact subscores — switch versions for those axes.</div>`
-        : '';
-    return `${_radarSvg(_radarAxes(d, bd))}<div class="radar-basis">${basis}</div>${note}`;
+    const sev = (bd.severity || d.severity || '').toUpperCase();
+    const sevCls = sev.toLowerCase() || 'none';
+    const score = (bd.base_score != null ? bd.base_score : d.cvss_score);
+    const subs = [];
+    if (bd.exploitability_score) subs.push(`exploitability ${bd.exploitability_score}`);
+    if (bd.impact_score) subs.push(`impact ${bd.impact_score}`);
+    const header = `<div class="vscore">
+        <span class="vscore-num sev-text-${sevCls}">${score != null ? score : 'N/A'}</span>
+        <span class="vscore-sev sev-text-${sevCls}">${escapeHtml(sev)}</span>
+        ${subs.length ? `<span class="vscore-sub">${escapeHtml(subs.join(' · '))}</span>` : ''}
+    </div>`;
+    const axes = _scoringAxes(bd);
+    const chart = axes.length
+        ? `${_scoringSvg(axes, sevCls)}
+           <p class="vscore-cap">Each spoke = how far that metric sits toward its <b>own worst case</b>. Outer ring = worst.</p>`
+        : `<div class="detail-none">No CVSS metric vector available for CVSS ${escapeHtml(String(bd.version || ''))}.</div>`;
+    const vec = bd.vector ? `<code class="cvss-vec">${escapeHtml(bd.vector)}</code>` : '';
+    return `${header}${chart}${vec}`;
 }
 
-function _defaultRadarVersion(bl) {
-    // Prefer a version that carries exploitability/impact subscores so the
-    // radar's shape is meaningful; fall back to whatever is present.
+function _defaultScoringVersion(bl) {
+    // Prefer a version with exploitability/impact subscores for a full header.
     for (const p of ['3.1', '3.0', '2.0']) {
         if (bl.find(b => String(b.version) === p)) return p;
     }
     return bl.length ? String(bl[0].version) : '';
 }
 
-function renderRadar(d) {
+function renderScoring(d) {
     window._cveDetail = d;
     const bl = d.cvss_breakdown || [];
-    const def = _defaultRadarVersion(bl);
+    if (!bl.length) {
+        return `<section class="cve-section"><h2>Vulnerability Scoring</h2>
+            <div class="detail-none">No CVSS score assigned yet.</div></section>`;
+    }
+    const def = _defaultScoringVersion(bl);
     const pills = bl.map(b => {
         const v = String(b.version);
-        return `<button type="button" class="radar-ver${v === def ? ' active' : ''}" data-ver="${escapeHtml(v)}" onclick="selectRadarVersion('${escapeHtml(v)}')">CVSS ${escapeHtml(v)}</button>`;
+        return `<button type="button" class="radar-ver${v === def ? ' active' : ''}" data-ver="${escapeHtml(v)}" onclick="selectScoringVersion('${escapeHtml(v)}')">CVSS ${escapeHtml(v)}</button>`;
     }).join('');
-    return `<div class="side-box cve-radar">
-        <div class="side-box-title">Threat Radar</div>
-        ${bl.length ? `<div class="radar-vers">${pills}</div>` : ''}
-        <div id="radar-body">${_radarBody(d, def)}</div>
-    </div>`;
+    return `<section class="cve-section cve-scoring">
+        <h2>Vulnerability Scoring ${bl.length > 1 ? `<span class="radar-vers-inline">${pills}</span>` : ''}</h2>
+        <div id="scoring-body">${_scoringBody(d, def)}</div>
+    </section>`;
 }
 
-function selectRadarVersion(ver) {
+function selectScoringVersion(ver) {
     const d = window._cveDetail;
     if (!d) return;
-    const body = document.getElementById('radar-body');
-    if (body) body.innerHTML = _radarBody(d, ver);
-    document.querySelectorAll('.radar-ver').forEach(b =>
+    const body = document.getElementById('scoring-body');
+    if (body) body.innerHTML = _scoringBody(d, ver);
+    document.querySelectorAll('.cve-scoring .radar-ver').forEach(b =>
         b.classList.toggle('active', b.dataset.ver === String(ver)));
 }
 

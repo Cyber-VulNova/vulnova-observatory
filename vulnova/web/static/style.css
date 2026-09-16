@@ -1015,6 +1015,24 @@ select:disabled { opacity: 0.4; cursor: not-allowed; }
 .radar-basis { text-align: center; font-size: 10.5px; color: var(--text-dim); margin-top: 6px; }
 .radar-note { font-size: 10px; color: var(--text-dim); margin-top: 6px; line-height: 1.4; font-style: italic; }
 
+/* Vulnerability Scoring panel (CVSS-metric radar) */
+.cve-scoring h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.radar-vers-inline { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.vscore { display: flex; align-items: baseline; gap: 12px; margin: 6px 0 4px; flex-wrap: wrap; }
+.vscore-num { font-size: 40px; font-weight: 800; line-height: 1; }
+.vscore-sev { font-size: 15px; font-weight: 800; letter-spacing: 0.04em; }
+.vscore-sub { font-size: 13px; color: var(--text-dim); }
+.cve-scoring .radar-svg { width: 100%; max-width: 440px; height: auto; margin: 4px auto 0; display: block; overflow: visible; }
+.radar-mval { fill: var(--text-dim); font-size: 8px; }
+.vscore-cap { text-align: center; color: var(--text-secondary); font-size: 12.5px; margin: 4px 0 10px; line-height: 1.5; }
+.cve-scoring .cvss-vec { display: block; margin-top: 4px; word-break: break-all; }
+/* severity-tinted radar fill */
+.radar-area.vfill-critical { fill: #9b59b6; stroke: #b98fe0; }
+.radar-area.vfill-high { fill: #e74c3c; stroke: #ff7a6b; }
+.radar-area.vfill-medium { fill: #f39c12; stroke: #e6a817; }
+.radar-area.vfill-low { fill: #3498db; stroke: #6fb3ff; }
+.radar-area.vfill-none { fill: #7f8c8d; stroke: #95a5a6; }
+
 /* Ransomware panel */
 .side-box-ransom { border-color: rgba(220,53,69,0.4); background: rgba(220,53,69,0.06); }
 .ransom-hit { color: var(--danger); font-weight: 700; font-size: 14px; }
