@@ -118,23 +118,34 @@ function metricCard(label, value, sub) {
 
 function clamp01(x) { return Math.max(0, Math.min(1, x || 0)); }
 
-function renderRadar(d) {
-    const bd = (d.cvss_breakdown && d.cvss_breakdown[0]) || {};
+// Per-version subscore scales: CVSS 2.0 subscores are 0–10; 3.x exploitability
+// max is 3.9 and impact max is ~6.0; 4.0 exposes no exploitability/impact.
+function _radarSubMax(version) {
+    const v = String(version || '');
+    if (v.startsWith('2')) return { expl: 10, impact: 10 };
+    if (v.startsWith('3')) return { expl: 3.9, impact: 6.0 };
+    return { expl: 0, impact: 0 };  // 4.0 / unknown
+}
+
+function _radarAxes(d, bd) {
+    const sm = _radarSubMax(bd.version);
     const ransom = d.kev_details && (d.kev_details.known_ransomware_use || '').toLowerCase() === 'known';
     const threat = d.in_kev ? (ransom ? 1 : 0.7)
         : ((d.epss_percent || 0) >= 50 ? 0.45 : (d.epss_percent || 0) >= 10 ? 0.25 : 0.1);
-    const axes = [
-        { label: 'Severity', v: clamp01((d.cvss_score || 0) / 10) },
-        { label: 'Exploitability', v: clamp01((bd.exploitability_score || 0) / 3.9) },
-        { label: 'Impact', v: clamp01((bd.impact_score || 0) / 6.0) },
+    return [
+        { label: 'Severity', v: clamp01(((bd.base_score || d.cvss_score) || 0) / 10) },
+        { label: 'Exploitability', v: sm.expl ? clamp01((bd.exploitability_score || 0) / sm.expl) : 0 },
+        { label: 'Impact', v: sm.impact ? clamp01((bd.impact_score || 0) / sm.impact) : 0 },
         { label: 'EPSS', v: clamp01((d.epss_percent || 0) / 100) },
         { label: 'Exploits', v: clamp01((d.exploit_count || 0) / 3) },
         { label: 'Threat', v: clamp01(threat) },
     ];
+}
+
+function _radarSvg(axes) {
     const size = 260, cx = size / 2, cy = size / 2, R = 78, n = axes.length;
     const ang = i => (-90 + i * 360 / n) * Math.PI / 180;
     const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
-
     let rings = '';
     [0.25, 0.5, 0.75, 1].forEach(f => {
         const p = axes.map((_, i) => pt(i, R * f).map(x => x.toFixed(1)).join(',')).join(' ');
@@ -150,15 +161,53 @@ function renderRadar(d) {
         labels += `<text x="${lx.toFixed(1)}" y="${(ly + 11).toFixed(1)}" text-anchor="${anchor}" class="radar-val">${Math.round(a.v * 100)}</text>`;
     });
     const poly = axes.map((a, i) => pt(i, R * a.v).map(x => x.toFixed(1)).join(',')).join(' ');
+    return `<svg viewBox="0 0 ${size} ${size}" class="radar-svg" role="img" aria-label="CVE threat radar">
+        ${rings}${spokes}<polygon points="${poly}" class="radar-area"/>${labels}</svg>`;
+}
 
+function _radarBody(d, version) {
+    const bl = d.cvss_breakdown || [];
+    const bd = bl.find(b => String(b.version) === String(version)) || bl[0] || {};
+    const v = String(bd.version || '');
+    const noSub = !(v.startsWith('2') || v.startsWith('3'));
+    const basis = v ? `Based on CVSS ${escapeHtml(v)}` : 'No CVSS score assigned';
+    const note = noSub && v
+        ? `<div class="radar-note">CVSS ${escapeHtml(v)} defines no exploitability / impact subscores — switch versions for those axes.</div>`
+        : '';
+    return `${_radarSvg(_radarAxes(d, bd))}<div class="radar-basis">${basis}</div>${note}`;
+}
+
+function _defaultRadarVersion(bl) {
+    // Prefer a version that carries exploitability/impact subscores so the
+    // radar's shape is meaningful; fall back to whatever is present.
+    for (const p of ['3.1', '3.0', '2.0']) {
+        if (bl.find(b => String(b.version) === p)) return p;
+    }
+    return bl.length ? String(bl[0].version) : '';
+}
+
+function renderRadar(d) {
+    window._cveDetail = d;
+    const bl = d.cvss_breakdown || [];
+    const def = _defaultRadarVersion(bl);
+    const pills = bl.map(b => {
+        const v = String(b.version);
+        return `<button type="button" class="radar-ver${v === def ? ' active' : ''}" data-ver="${escapeHtml(v)}" onclick="selectRadarVersion('${escapeHtml(v)}')">CVSS ${escapeHtml(v)}</button>`;
+    }).join('');
     return `<div class="side-box cve-radar">
         <div class="side-box-title">Threat Radar</div>
-        <svg viewBox="0 0 ${size} ${size}" class="radar-svg" role="img" aria-label="CVE threat radar">
-            ${rings}${spokes}
-            <polygon points="${poly}" class="radar-area"/>
-            ${labels}
-        </svg>
+        ${bl.length ? `<div class="radar-vers">${pills}</div>` : ''}
+        <div id="radar-body">${_radarBody(d, def)}</div>
     </div>`;
+}
+
+function selectRadarVersion(ver) {
+    const d = window._cveDetail;
+    if (!d) return;
+    const body = document.getElementById('radar-body');
+    if (body) body.innerHTML = _radarBody(d, ver);
+    document.querySelectorAll('.radar-ver').forEach(b =>
+        b.classList.toggle('active', b.dataset.ver === String(ver)));
 }
 
 function renderRansomware(d) {

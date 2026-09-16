@@ -24,6 +24,13 @@ _COLLECTION_TERMS = (
     "-guide", "guide-", "tutorial", "learning", "learn-", "top-10", "top10",
     "secure-a-", "damn-vulnerable", "vulnerable-app", "vulnerable-application",
     "penetration_testing_poc", "penetration-testing", "malwoverview", "reference-",
+    # CVE/NVD data mirrors & aggregated vulnerability databases — these match
+    # every CVE id (they contain the whole catalog) but are NOT exploits.
+    "nvd-json", "nvd-data", "data-feeds", "json-data-feeds", "cvelist", "cvelistv5",
+    "cve-database", "cve-data", "vulnerability-database", "vuln-database", "vulndb",
+    "cve-search", "cvedb", "opencve", "vulnerability-lookup", "cvemap", "cvefeed",
+    "cve-feed", "cve-collector", "cve-monitor", "cve-tracker", "cve-crawler",
+    "advisory-database", "security-advisories", "known-exploited", "cve-list",
 )
 
 
@@ -191,9 +198,11 @@ class GitHubPoCClient:
                 combined.append(poc)
 
         if exclude_collections:
-            filtered = [p for p in combined if not is_collection_repo(p.full_name, p.description)]
-            # Keep the filter from wiping out everything on false positives
-            combined = filtered if filtered else combined
+            # Respect the exclusion fully: if every match is an aggregator/data
+            # mirror, the honest answer is "no PoC" (0 results), not restoring
+            # them — otherwise a CVE with only a data-repo match shows a bogus
+            # "1 public exploit".
+            combined = [p for p in combined if not is_collection_repo(p.full_name, p.description)]
 
         # Rank: repos that name the CVE (strong PoC signal) first, then by stars
         cid = cve_id.lower()
